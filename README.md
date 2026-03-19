@@ -1,6 +1,6 @@
 # GitLab Browser
 
-A modern, self-hostable GitLab frontend that authenticates with a **Personal Access Token** — no OAuth, no user licenses required. Browse and manage your GitLab projects entirely from your own deployment.
+A modern, self-hostable GitLab frontend that works with **public repositories out of the box** and optionally authenticates with a Personal Access Token — no OAuth, no user licenses required. Browse public projects without any account, or sign in with a PAT to access private repos and write actions.
 
 [![CI](https://github.com/gauthamp10/glabrowser/actions/workflows/ci.yml/badge.svg)](https://github.com/gauthamp10/glabrowser/actions/workflows/ci.yml)
 [![Security](https://github.com/gauthamp10/glabrowser/actions/workflows/security.yml/badge.svg)](https://github.com/gauthamp10/glabrowser/actions/workflows/security.yml)
@@ -76,13 +76,13 @@ cd glabrowser
 docker compose up --build
 ```
 
-Open **http://localhost:3000**, enter your GitLab instance URL and a Personal Access Token.
+Open **http://localhost:3000**. You can browse public repositories immediately — no account needed. Optionally enter a Personal Access Token to access private repos and write actions.
 
 ### Docker (manual)
 
 ```bash
-docker build -t glab-browser .
-docker run -d -p 3000:80 --name glab-browser --restart unless-stopped glab-browser
+docker build -t gitlab-browser .
+docker run -d -p 3000:80 --name gitlab-browser --restart unless-stopped gitlab-browser
 ```
 
 ### Changing the port
@@ -107,6 +107,8 @@ cd glabrowser
 npm install
 npm run dev        # starts at http://localhost:5173
 ```
+
+Public repositories on gitlab.com are accessible immediately without any token.
 
 ```bash
 npm run build      # production build → dist/
@@ -142,6 +144,8 @@ Wrap the Docker container behind a reverse proxy (Nginx, Traefik, Caddy) that te
 
 ## Personal Access Token Scopes
 
+A token is **optional** — public repositories on any GitLab instance are accessible without one. A PAT is required only for private repositories, write operations, and CI/CD features.
+
 Create a token at `https://YOUR_GITLAB/-/user_settings/personal_access_tokens`
 
 | Scope | Purpose | Required for |
@@ -158,14 +162,14 @@ Create a token at `https://YOUR_GITLAB/-/user_settings/personal_access_tokens`
 
 **Quick-fill link:**
 ```
-https://YOUR_GITLAB/-/user_settings/personal_access_tokens?name=glab-browser&scopes=read_api,read_repository,api
+https://YOUR_GITLAB/-/user_settings/personal_access_tokens?name=gitlab-browser&scopes=read_api,read_repository,api
 ```
 
 ---
 
 ## Security
 
-glab-browser is designed with a security-first approach to Personal Access Token handling and browser hardening.
+GitLab Browser is designed with a security-first approach to Personal Access Token handling and browser hardening.
 
 **Token protection**
 - PATs are encrypted at rest using **AES-GCM-256 (WebCrypto)** — `localStorage` never contains a plaintext token

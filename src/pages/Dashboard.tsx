@@ -173,6 +173,7 @@ export default function Dashboard() {
   const { data: starredProjects, isLoading: loadingStarred } = useQuery({
     queryKey: ['projects', 'starred'],
     queryFn: () => api.projects.list({ starred: true, per_page: 6 }),
+    enabled: !!user,   // requires authentication; skip in guest mode
   });
 
   const { data: events } = useQuery({
@@ -188,8 +189,10 @@ export default function Dashboard() {
       <div className="flex items-center gap-3">
         {user && <UserAvatar user={user} size="md" showTooltip={false} />}
         <div>
-          <h1 className="text-2xl font-bold">Welcome back{user ? `, ${user.name.split(' ')[0]}` : ''}!</h1>
-          <p className="text-sm text-muted-foreground">Here's what's happening in your GitLab.</p>
+          <h1 className="text-2xl font-bold">{user ? `Welcome back, ${user.name.split(' ')[0]}!` : 'Browse GitLab'}</h1>
+          <p className="text-sm text-muted-foreground">
+            {user ? "Here's what's happening in your GitLab." : 'Public repositories and projects are available without signing in.'}
+          </p>
         </div>
       </div>
 
@@ -245,8 +248,12 @@ export default function Dashboard() {
             <CardContent>
               {events ? (
                 <ContributionHeatmap events={events.items} />
-              ) : (
+              ) : user ? (
                 <Skeleton className="h-24 w-full" />
+              ) : (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  Sign in with a Personal Access Token to see your contribution heatmap.
+                </p>
               )}
             </CardContent>
           </Card>
