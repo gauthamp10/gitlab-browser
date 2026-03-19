@@ -8,9 +8,9 @@ A modern, self-hostable GitLab frontend that works with **public repositories ou
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](Dockerfile)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-DigitalOcean-0080FF?logo=digitalocean&logoColor=white)](https://glabrowser-f3lru.ondigitalocean.app/)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-DigitalOcean-0080FF?logo=digitalocean&logoColor=white)](https://glabrowser-bchpz.ondigitalocean.app/)
 
-> **🌐 Live demo:** [https://glabrowser-f3lru.ondigitalocean.app/](https://glabrowser-f3lru.ondigitalocean.app/) — browse public GitLab repositories instantly.
+> **🌐 Live demo:** [https://glabrowser-bchpz.ondigitalocean.app/](https://glabrowser-bchpz.ondigitalocean.app/) — browse public GitLab repositories instantly.
 
 > **Note**: This project is not affiliated with or endorsed by GitLab Inc. It uses the public [GitLab REST API](https://docs.gitlab.com/api/rest/).
 

@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Search as SearchIcon, FolderOpen, AlertCircle, GitPullRequest, GitCommit, FileCode } from 'lucide-react';
+import { Search as SearchIcon, FolderOpen, AlertCircle, GitPullRequest, GitCommit, FileCode, Lock } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/skeleton';
 import { Badge } from '../components/ui/badge';
 import EmptyState from '../components/common/EmptyState';
 import { useApi } from '../api';
+import { useAuthStore } from '../store/auth';
 import type { SearchScope } from '../api/search';
+import type { GitLabSearchResult } from '../types/gitlab';
 
 const SCOPES: Array<{ value: SearchScope; label: string; icon: React.ElementType }> = [
   { value: 'projects', label: 'Projects', icon: FolderOpen },
@@ -20,6 +22,8 @@ const SCOPES: Array<{ value: SearchScope; label: string; icon: React.ElementType
 
 export default function Search() {
   const api = useApi();
+  const { token, user } = useAuthStore();
+  const isGuest = token === '' && !user;
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(searchParams.get('q') ?? '');
   const [scope, setScope] = useState<SearchScope>('projects');
@@ -30,10 +34,36 @@ export default function Search() {
     setQuery(q);
   }, [q]);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['search', scope, q],
-    queryFn: () => api.search.global(scope, q, { per_page: 20 }),
-    enabled: q.length > 1,
+  // Scopes that require authentication — disabled in guest mode.
+  const AUTH_REQUIRED_SCOPES: SearchScope[] = ['issues', 'merge_requests', 'commits', 'blobs'];
+
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['search', scope, q, isGuest],
+    queryFn: async () => {
+      // Guest mode: the global /search endpoint requires authentication.
+      // For the "projects" scope, fall back to /projects?search=...&visibility=public
+      // which works without a token. All other scopes are blocked in guest mode.
+      if (isGuest) {
+        const result = await api.projects.list({
+          search: q,
+          visibility: 'public',
+          per_page: 20,
+          order_by: 'last_activity_at',
+        });
+        return {
+          items: result.items.map((p): GitLabSearchResult => ({
+            id: p.id,
+            title: p.name_with_namespace,
+            description: p.description ?? undefined,
+            web_url: p.web_url,
+          })),
+          pagination: result.pagination,
+        };
+      }
+      return api.search.global(scope, q, { per_page: 20 });
+    },
+    // In guest mode only the projects scope is supported.
+    enabled: q.length > 1 && (!isGuest || scope === 'projects'),
   });
 
   const handleSearch = (e: React.FormEvent) => {
@@ -65,21 +95,36 @@ export default function Search() {
         <>
           {/* Scope tabs */}
           <div className="flex gap-1 flex-wrap">
-            {SCOPES.map(({ value, label, icon: Icon }) => (
-              <button
-                key={value}
-                onClick={() => setScope(value)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
-                  scope === value
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {label}
-              </button>
-            ))}
+            {SCOPES.map(({ value, label, icon: Icon }) => {
+              const locked = isGuest && AUTH_REQUIRED_SCOPES.includes(value);
+              return (
+                <button
+                  key={value}
+                  onClick={() => !locked && setScope(value)}
+                  disabled={locked}
+                  title={locked ? 'Sign in to search ' + label.toLowerCase() : undefined}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                    locked
+                      ? 'bg-muted text-muted-foreground/40 cursor-not-allowed'
+                      : scope === value
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  {locked ? <Lock className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
+                  {label}
+                </button>
+              );
+            })}
           </div>
+
+          {/* Guest-mode notice for non-project scopes */}
+          {isGuest && AUTH_REQUIRED_SCOPES.includes(scope) && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+              Searching {scope.replace('_', ' ')} requires a Personal Access Token.{' '}
+              <Link to="/login" className="underline font-medium">Sign in</Link> to unlock full search.
+            </div>
+          )}
 
           {/* Results */}
           <div className="space-y-2">
@@ -90,6 +135,16 @@ export default function Search() {
                   <Skeleton className="h-3 w-3/4" />
                 </div>
               ))
+            ) : isError ? (
+              <EmptyState
+                icon={<AlertCircle className="h-8 w-8 text-destructive" />}
+                title="Search failed"
+                description={
+                  (error as Error)?.message?.includes('401') || (error as Error)?.message?.includes('403')
+                    ? 'This search scope requires authentication. Please sign in.'
+                    : 'Could not reach the GitLab API. Check your connection and try again.'
+                }
+              />
             ) : !data?.items.length ? (
               <EmptyState
                 icon={<SearchIcon className="h-8 w-8" />}
@@ -160,7 +215,11 @@ export default function Search() {
         <EmptyState
           icon={<SearchIcon className="h-8 w-8" />}
           title="Search GitLab"
-          description="Search for projects, issues, merge requests, commits, and code across all your GitLab instances."
+          description={
+            isGuest
+              ? 'Search for public projects. Sign in to also search issues, merge requests, commits, and code.'
+              : 'Search for projects, issues, merge requests, commits, and code across all your GitLab instances.'
+          }
         />
       )}
     </div>
