@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   GitFork, Star, Lock, Unlock, Globe, ChevronRight,
   GitBranch, AlertCircle, GitPullRequest, Play,
-  BarChart2, GitCompare, Pin, Settings
+  BarChart2, GitCompare, Pin, Settings, GitCommit
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -17,6 +17,7 @@ import { cn } from '../../utils/cn';
 
 const projectNavItems = [
   { path: '/repository', label: 'Repository', icon: GitBranch },
+  { path: '/commits', label: 'Commits', icon: GitCommit },
   { path: '/issues', label: 'Issues', icon: AlertCircle },
   { path: '/merge_requests', label: 'Merge Requests', icon: GitPullRequest },
   { path: '/pipelines', label: 'Pipelines', icon: Play },

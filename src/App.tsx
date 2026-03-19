@@ -18,6 +18,7 @@ import Search from './pages/Search';
 
 // Project pages
 import Repository from './pages/project/Repository';
+import Commits from './pages/project/Commits';
 import FileViewer from './pages/project/FileViewer';
 import Issues from './pages/project/Issues';
 import IssueDetail from './pages/project/IssueDetail';
@@ -67,7 +68,7 @@ export default function App() {
                     <Route path="repository" element={<Repository />} />
                     <Route path="repository/tree/*" element={<Repository />} />
                     <Route path="repository/blob/*" element={<FileViewer />} />
-                    <Route path="commits" element={<Repository />} />
+                    <Route path="commits" element={<Commits />} />
                     <Route path="issues" element={<Issues />} />
                     <Route path="issues/:iid" element={<IssueDetail />} />
                     <Route path="merge_requests" element={<MergeRequests />} />

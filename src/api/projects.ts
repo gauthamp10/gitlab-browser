@@ -72,6 +72,18 @@ export function createProjectsApi(client: GitLabApiClient) {
     getCommit: (id: number, sha: string) =>
       client.request<GitLabCommit>(`/projects/${id}/repository/commits/${sha}`),
 
+    getCommitDiff: (id: number, sha: string) =>
+      client.requestPaged<{
+        diff: string;
+        new_path: string;
+        old_path: string;
+        new_file: boolean;
+        renamed_file: boolean;
+        deleted_file: boolean;
+      }>(`/projects/${id}/repository/commits/${sha}/diff`, {
+        params: { per_page: 30 },
+      }),
+
     getLanguages: (id: number) =>
       client.request<Record<string, number>>(`/projects/${id}/languages`),
 
