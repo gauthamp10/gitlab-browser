@@ -1,0 +1,17 @@
+services:
+  glab-browser:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: glab-browser
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "com.glab-browser.description=GitLab Browser - Token-based GitLab frontend"

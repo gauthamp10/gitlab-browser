@@ -1,0 +1,142 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 22 97% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 22 97% 58%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 22 97% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 22 97% 58%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+  }
+}
+
+/* Shiki syntax highlighting fixes */
+.shiki {
+  @apply rounded-md p-4 overflow-x-auto text-sm leading-relaxed;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+.shiki code {
+  background: none;
+  padding: 0;
+}
+
+/* Diff viewer */
+.diff-line-add {
+  @apply bg-green-50 dark:bg-green-950/30;
+}
+.diff-line-del {
+  @apply bg-red-50 dark:bg-red-950/30;
+}
+.diff-line-header {
+  @apply bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400;
+}
+
+/* Contribution heatmap */
+.heatmap-cell {
+  @apply transition-all duration-150 cursor-pointer;
+}
+
+/* Markdown rendered content */
+.markdown-body {
+  @apply max-w-none text-sm leading-relaxed;
+}
+.markdown-body h1 { @apply text-2xl font-bold mt-6 mb-3; }
+.markdown-body h2 { @apply text-xl font-bold mt-5 mb-2; }
+.markdown-body h3 { @apply text-lg font-semibold mt-4 mb-2; }
+.markdown-body h4 { @apply text-base font-semibold mt-3 mb-1; }
+.markdown-body p { @apply mb-3; }
+.markdown-body ul { @apply list-disc list-inside mb-3 space-y-1; }
+.markdown-body ol { @apply list-decimal list-inside mb-3 space-y-1; }
+.markdown-body li { @apply ml-2; }
+.markdown-body blockquote { @apply border-l-4 border-border pl-4 italic text-muted-foreground my-3; }
+.markdown-body hr { @apply border-border my-4; }
+.markdown-body table { @apply w-full border-collapse mb-4; }
+.markdown-body th { @apply border border-border px-3 py-2 bg-muted font-semibold text-left text-sm; }
+.markdown-body td { @apply border border-border px-3 py-2 text-sm; }
+.markdown-body a { @apply text-primary underline underline-offset-2 hover:opacity-80; }
+.markdown-body strong { @apply font-semibold; }
+.markdown-body em { @apply italic; }
+.markdown-body pre {
+  @apply bg-muted rounded-md p-4 overflow-x-auto my-3;
+}
+.markdown-body code:not(pre code) {
+  @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono;
+}
+.markdown-body img { @apply max-w-full rounded-md; }
+
+/* Pipeline job log */
+.job-log {
+  @apply font-mono text-xs leading-relaxed text-green-400;
+  background: #0d1117;
+}
+
+/* Sidebar transition */
+.sidebar-enter {
+  transform: translateX(-100%);
+}
+.sidebar-enter-active {
+  transform: translateX(0);
+  transition: transform 200ms ease-in-out;
+}
