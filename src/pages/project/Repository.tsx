@@ -3,7 +3,7 @@ import { Link, useOutletContext, useParams, useLocation } from 'react-router-dom
 import { useQuery } from '@tanstack/react-query';
 import {
   ChevronRight, GitBranch, GitCommit,
-  Download, Clock, ArrowLeft, ChevronDown, Plus,
+  Download, Clock, ArrowLeft, ChevronDown, Plus, Upload,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Skeleton } from '../../components/ui/skeleton';
@@ -21,6 +21,7 @@ import { useApi } from '../../api';
 import { getFileExtension } from '../../utils/url';
 import { useTokenPermissions } from '../../hooks/useTokenPermissions';
 import CreateBranchDialog from '../../components/repository/CreateBranchDialog';
+import UploadFileDialog from '../../components/repository/UploadFileDialog';
 import PermGate from '../../components/common/PermGate';
 import type { GitLabProject, GitLabTreeItem } from '../../types/gitlab';
 
@@ -99,6 +100,7 @@ export default function Repository() {
     : [];
 
   const [showCreateBranch, setShowCreateBranch] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
   const { canWriteRepo, canReadRepo } = useTokenPermissions();
 
   const handleDownload = (format: 'zip' | 'tar.gz') => {
@@ -119,6 +121,14 @@ export default function Repository() {
           setRef(branchName);
           setShowCreateBranch(false);
         }}
+      />
+
+      <UploadFileDialog
+        open={showUpload}
+        onClose={() => setShowUpload(false)}
+        projectId={Number(id)}
+        currentPath={currentPath}
+        currentRef={ref}
       />
 
       {/* Branch selector + actions */}
@@ -182,6 +192,16 @@ export default function Repository() {
           <Button variant="outline" size="sm" onClick={() => setShowCreateBranch(true)} disabled={!canWriteRepo}>
             <Plus className="h-4 w-4 mr-1" />
             New branch
+          </Button>
+        </PermGate>
+
+        <PermGate
+          allowed={canWriteRepo}
+          reason='Requires "api" or "write_repository" scope to upload files'
+        >
+          <Button variant="outline" size="sm" onClick={() => setShowUpload(true)} disabled={!canWriteRepo}>
+            <Upload className="h-4 w-4 mr-1" />
+            Upload file
           </Button>
         </PermGate>
 

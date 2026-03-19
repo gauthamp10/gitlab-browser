@@ -1,5 +1,5 @@
 import type { GitLabApiClient } from './client';
-import type { GitLabTreeItem, GitLabFile, GitLabBlame, GitLabBranch } from '../types/gitlab';
+import type { GitLabTreeItem, GitLabFile, GitLabBlame, GitLabBranch, GitLabFileOperation } from '../types/gitlab';
 
 export function createRepositoryApi(client: GitLabApiClient) {
   return {
@@ -84,6 +84,49 @@ export function createRepositoryApi(client: GitLabApiClient) {
         `/projects/${projectId}/repository/branches/${encodeURIComponent(branch)}`,
         { method: 'DELETE' }
       ),
+
+    // Creates a new file in the repository. `content` must already be
+    // base64-encoded; pass encoding: 'base64'.
+    createFile: (
+      projectId: number,
+      filePath: string,
+      params: {
+        branch: string;
+        content: string;
+        commit_message: string;
+        encoding?: 'base64' | 'text';
+        author_name?: string;
+        author_email?: string;
+      }
+    ) => {
+      const encodedPath = filePath.split('/').map(encodeURIComponent).join('%2F');
+      return client.request<GitLabFileOperation>(
+        `/projects/${projectId}/repository/files/${encodedPath}`,
+        { method: 'POST', body: JSON.stringify({ encoding: 'base64', ...params }) }
+      );
+    },
+
+    // Updates an existing file in the repository. `content` must already be
+    // base64-encoded; pass encoding: 'base64'.
+    updateFile: (
+      projectId: number,
+      filePath: string,
+      params: {
+        branch: string;
+        content: string;
+        commit_message: string;
+        last_commit_id?: string;
+        encoding?: 'base64' | 'text';
+        author_name?: string;
+        author_email?: string;
+      }
+    ) => {
+      const encodedPath = filePath.split('/').map(encodeURIComponent).join('%2F');
+      return client.request<GitLabFileOperation>(
+        `/projects/${projectId}/repository/files/${encodedPath}`,
+        { method: 'PUT', body: JSON.stringify({ encoding: 'base64', ...params }) }
+      );
+    },
 
   };
 }

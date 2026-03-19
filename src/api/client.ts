@@ -11,7 +11,7 @@ export class ApiError extends Error {
 
 export interface ApiConfig {
   host: string;
-  token: string;
+  token: string | null;
 }
 
 export type RequestParams = Record<string, string | number | boolean | undefined | null>;
@@ -59,6 +59,15 @@ export interface PagedResult<T> {
 export function createApiClient(config: ApiConfig) {
   const base = `${config.host.replace(/\/$/, '')}/api/v4`;
 
+  // Only attach the PRIVATE-TOKEN header when a token is configured.
+  // Omitting it allows the client to reach public GitLab API endpoints
+  // without any authentication (guest mode).
+  function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
+    return config.token
+      ? { 'PRIVATE-TOKEN': config.token, ...extra }
+      : extra;
+  }
+
   async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     const { params, headers = {}, ...init } = options;
     const url = buildUrl(base, path, params);
@@ -66,9 +75,8 @@ export function createApiClient(config: ApiConfig) {
     const res = await fetch(url, {
       ...init,
       headers: {
-        'PRIVATE-TOKEN': config.token,
         'Content-Type': 'application/json',
-        ...headers,
+        ...authHeaders(headers),
       },
     });
 
@@ -92,9 +100,8 @@ export function createApiClient(config: ApiConfig) {
     const res = await fetch(url, {
       ...init,
       headers: {
-        'PRIVATE-TOKEN': config.token,
         'Content-Type': 'application/json',
-        ...headers,
+        ...authHeaders(headers),
       },
     });
 
@@ -137,7 +144,7 @@ export function createApiClient(config: ApiConfig) {
 
     const res = await fetch(url, {
       ...init,
-      headers: { 'PRIVATE-TOKEN': config.token, ...headers },
+      headers: authHeaders(headers),
     });
 
     if (!res.ok) throw new ApiError(res.status, `HTTP ${res.status}`);
@@ -147,7 +154,7 @@ export function createApiClient(config: ApiConfig) {
   async function fetchBlob(path: string, params?: RequestParams): Promise<Blob> {
     const url = buildUrl(base, path, params);
     const res = await fetch(url, {
-      headers: { 'PRIVATE-TOKEN': config.token },
+      headers: authHeaders(),
     });
     if (!res.ok) throw new ApiError(res.status, `HTTP ${res.status}`);
     return res.blob();

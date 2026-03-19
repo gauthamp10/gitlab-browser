@@ -14,7 +14,7 @@ import { useAuthStore } from '../store/auth';
 
 export type GitLabApi = ReturnType<typeof createAllApis>;
 
-function createAllApis(host: string, token: string) {
+function createAllApis(host: string, token: string | null) {
   const client = createApiClient({ host, token });
   return {
     client,
@@ -37,7 +37,10 @@ export function ApiProvider({ children }: { children: ReactNode }) {
   const { token, host } = useAuthStore();
 
   const api = useMemo(() => {
-    if (!token || !host) return null;
+    // token === null means "not set up yet" → no API client
+    // token === ''    means guest mode → create client without a PAT (public access)
+    // token === 'glpat-...' means authenticated → create client with PAT
+    if (token === null || !host) return null;
     return createAllApis(host, token);
   }, [token, host]);
 

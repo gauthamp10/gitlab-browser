@@ -272,6 +272,11 @@ export interface GitLabFile {
   execute_filemode: boolean;
 }
 
+export interface GitLabFileOperation {
+  file_path: string;
+  branch: string;
+}
+
 export interface GitLabNote {
   id: number;
   body: string;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Sun, Moon, Monitor, Bell } from 'lucide-react';
+import { Search, Sun, Moon, Monitor, Bell, LogIn } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import {
@@ -13,7 +13,8 @@ import { useTheme } from '../ThemeProvider';
 import { cn } from '../../utils/cn';
 
 export default function Topbar() {
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
+  const isGuest = token === '';
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
@@ -92,7 +93,20 @@ export default function Topbar() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* User menu */}
+        {/* Guest mode: sign-in prompt */}
+        {isGuest && (
+          <Button
+            variant="default"
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => navigate('/login')}
+          >
+            <LogIn className="h-3.5 w-3.5" />
+            Sign in
+          </Button>
+        )}
+
+        {/* Authenticated user menu */}
         {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

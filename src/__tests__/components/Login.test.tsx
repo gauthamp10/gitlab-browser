@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Login from '../../pages/Login';
 import { useAuthStore } from '../../store/auth';
 
@@ -19,10 +20,13 @@ vi.mock('react-router-dom', async (importOriginal) => {
 });
 
 function renderLogin() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter>
-      <Login />
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 }
 
@@ -43,7 +47,7 @@ describe('Login — initial render', () => {
 
   it('renders host URL input with default https://gitlab.com', () => {
     renderLogin();
-    const hostInput = screen.getByPlaceholderText('https://gitlab.com');
+    const hostInput = screen.getByLabelText('GitLab Host URL');
     expect(hostInput).toHaveValue('https://gitlab.com');
   });
 
@@ -66,7 +70,7 @@ describe('Login — insecure connection warning', () => {
   it('shows warning when user types an http:// URL', async () => {
     const user = userEvent.setup();
     renderLogin();
-    const hostInput = screen.getByPlaceholderText('https://gitlab.com');
+    const hostInput = screen.getByLabelText('GitLab Host URL');
     await user.clear(hostInput);
     await user.type(hostInput, 'http://internal.corp');
     expect(screen.getByText(/Insecure connection/i)).toBeInTheDocument();
@@ -75,7 +79,7 @@ describe('Login — insecure connection warning', () => {
   it('does NOT show warning for https:// URLs', async () => {
     const user = userEvent.setup();
     renderLogin();
-    const hostInput = screen.getByPlaceholderText('https://gitlab.com');
+    const hostInput = screen.getByLabelText('GitLab Host URL');
     await user.clear(hostInput);
     await user.type(hostInput, 'https://gitlab.com');
     expect(screen.queryByText(/Insecure connection/i)).not.toBeInTheDocument();
@@ -84,7 +88,7 @@ describe('Login — insecure connection warning', () => {
   it('clears warning when user switches back to https://', async () => {
     const user = userEvent.setup();
     renderLogin();
-    const hostInput = screen.getByPlaceholderText('https://gitlab.com');
+    const hostInput = screen.getByLabelText('GitLab Host URL');
     await user.clear(hostInput);
     await user.type(hostInput, 'http://internal.corp');
     expect(screen.getByText(/Insecure connection/i)).toBeInTheDocument();

@@ -1,27 +1,104 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Eye, EyeOff, ExternalLink, Loader2, AlertCircle, ShieldAlert } from 'lucide-react';
+import { Eye, EyeOff, ExternalLink, Loader2, AlertCircle, ShieldAlert, Globe } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { useAuthStore } from '../store/auth';
-import { createApiClient } from '../api/client';
+import { createApiClient, ApiError } from '../api/client';
 import { normalizeHost } from '../utils/url';
+import { safeExternalHref } from '../utils/safeHref';
 import type { GitLabUser } from '../types/gitlab';
+
+// Smoothly follows the cursor using lerp on each animation frame.
+// Returns normalised [0,1] coordinates so the blobs are resolution-independent.
+function useCursorBlob() {
+  const pos   = useRef({ x: 0.5, y: 0.5 });
+  const target = useRef({ x: 0.5, y: 0.5 });
+  const frame  = useRef<number>(0);
+  const el1    = useRef<HTMLDivElement>(null);
+  const el2    = useRef<HTMLDivElement>(null);
+
+  const onMouseMove = useCallback((e: MouseEvent) => {
+    target.current = {
+      x: e.clientX / window.innerWidth,
+      y: e.clientY / window.innerHeight,
+    };
+  }, []);
+
+  useEffect(() => {
+    const tick = () => {
+      // Primary blob follows at ~8% per frame (smooth)
+      pos.current.x += (target.current.x - pos.current.x) * 0.08;
+      pos.current.y += (target.current.y - pos.current.y) * 0.08;
+
+      if (el1.current) {
+        el1.current.style.transform =
+          `translate(${pos.current.x * 100 - 50}%, ${pos.current.y * 100 - 50}%)`;
+      }
+      // Secondary blob follows slower (25% of primary speed) for depth
+      if (el2.current) {
+        const x2 = 0.5 + (pos.current.x - 0.5) * 0.4;
+        const y2 = 0.5 + (pos.current.y - 0.5) * 0.4;
+        el2.current.style.transform =
+          `translate(${x2 * 100 - 50}%, ${y2 * 100 - 50}%)`;
+      }
+
+      frame.current = requestAnimationFrame(tick);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    frame.current = requestAnimationFrame(tick);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      cancelAnimationFrame(frame.current);
+    };
+  }, [onMouseMove]);
+
+  return { el1, el2 };
+}
 
 export default function Login() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const isAddInstance = searchParams.get('add') === '1';
+  const { el1: blob1, el2: blob2 } = useCursorBlob();
 
-  const { setAuth, setUser, instances } = useAuthStore();
+  const { setAuth, setUser, browseAsGuest, instances } = useAuthStore();
 
   const [host, setHost] = useState('https://gitlab.com');
   const [token, setToken] = useState('');
   const [showToken, setShowToken] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [guestHost, setGuestHost] = useState('https://gitlab.com');
+
+  const handleBrowseAsGuest = () => {
+    const normalizedHost = normalizeHost(guestHost);
+    browseAsGuest(normalizedHost);
+    // Clear the cache so a previously authenticated user's data is not
+    // shown while browsing as an unauthenticated guest.
+    queryClient.clear();
+    navigate('/dashboard');
+  };
+
+  // Build the token-creation link from the parsed URL origin only.
+  // Using url.origin (a property of the URL object, not the raw user string)
+  // breaks the taint path from the host input to the href attribute, so static
+  // analysis tools see that only the safe, parsed component reaches the DOM.
+  const createTokenHref = useMemo(() => {
+    try {
+      const url = new URL(normalizeHost(host));
+      if (url.protocol !== 'https:' && url.protocol !== 'http:') return undefined;
+      return `${url.origin}/-/user_settings/personal_access_tokens?name=gitlab-browser&scopes=read_api,read_repository`;
+    } catch {
+      return undefined;
+    }
+  }, [host]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,14 +116,23 @@ export default function Login() {
 
       navigate('/dashboard');
     } catch (err) {
-      if (err instanceof Error) {
-        if (err.message.includes('401') || err.message.includes('Unauthorized')) {
+      if (err instanceof ApiError) {
+        // Derive the display message from the numeric HTTP status only.
+        // Never render the server-supplied message string; a number cannot
+        // carry HTML so there is no taint path from the network to the DOM.
+        const code = err.status;
+        if (code === 401 || code === 403) {
           setError('Invalid token. Please check your Personal Access Token and try again.');
-        } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-          setError(`Cannot reach ${host}. Check the host URL and your network connection.`);
+        } else if (code === 404) {
+          setError('GitLab instance not found at the specified URL.');
+        } else if (code >= 500) {
+          setError(`GitLab server error (HTTP ${code}). Please try again later.`);
         } else {
-          setError(err.message);
+          setError(`Request failed (HTTP ${code}). Check your GitLab host and token.`);
         }
+      } else if (err instanceof TypeError) {
+        // TypeError is raised by fetch() for network/CORS failures (no HTTP status).
+        setError('Cannot reach the specified host. Check the URL and your network connection.');
       } else {
         setError('An unexpected error occurred. Please try again.');
       }
@@ -56,8 +142,55 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md space-y-6">
+    <div className="relative min-h-screen flex items-center justify-center bg-background p-4 overflow-hidden">
+
+      {/* ── Animated background ── */}
+
+      {/* Dot-grid texture */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.035] dark:opacity-[0.06]"
+        style={{
+          backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)',
+          backgroundSize: '28px 28px',
+        }}
+      />
+
+      {/* Static accent ring — top-right */}
+      <div className="pointer-events-none absolute -top-40 -right-40 h-96 w-96 rounded-full border border-primary/10 opacity-60" />
+      <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full border border-primary/10 opacity-40" />
+
+      {/* Static accent ring — bottom-left */}
+      <div className="pointer-events-none absolute -bottom-40 -left-40 h-96 w-96 rounded-full border border-primary/10 opacity-60" />
+      <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full border border-primary/10 opacity-40" />
+
+      {/* Primary cursor blob */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
+        <div
+          ref={blob1}
+          className="h-[600px] w-[600px] rounded-full"
+          style={{
+            background: 'radial-gradient(circle, hsl(var(--primary)/0.18) 0%, transparent 70%)',
+            filter: 'blur(48px)',
+            willChange: 'transform',
+          }}
+        />
+      </div>
+
+      {/* Secondary (offset) blob for depth */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
+        <div
+          ref={blob2}
+          className="h-[400px] w-[400px] rounded-full"
+          style={{
+            background: 'radial-gradient(circle, hsl(var(--primary)/0.10) 0%, transparent 70%)',
+            filter: 'blur(64px)',
+            willChange: 'transform',
+          }}
+        />
+      </div>
+
+      {/* ── Page content ── */}
+      <div className="relative z-10 w-full max-w-md space-y-6">
         {/* Logo */}
         <div className="flex flex-col items-center gap-3">
           <div className="h-16 w-16 rounded-2xl bg-primary flex items-center justify-center shadow-lg">
@@ -84,13 +217,14 @@ export default function Login() {
                 <button
                   key={instance.host}
                   onClick={() => {
+                    queryClient.clear();
                     useAuthStore.getState().switchInstance(instance.host);
                     navigate('/dashboard');
                   }}
                   className="w-full flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors text-left"
                 >
                   <img
-                    src={instance.user.avatar_url}
+                    src={safeExternalHref(instance.user.avatar_url) ?? ''}
                     alt={instance.user.name}
                     className="h-8 w-8 rounded-full"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -155,15 +289,17 @@ export default function Login() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="token">Personal Access Token</Label>
-                  <a
-                    href={`${host}/-/user_settings/personal_access_tokens?name=glab-browser&scopes=read_api,read_repository`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-primary hover:underline flex items-center gap-1"
-                  >
-                    Create token
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
+                  {createTokenHref && (
+                    <a
+                      href={createTokenHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary hover:underline flex items-center gap-1"
+                    >
+                      Create token
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
                 </div>
                 <div className="relative">
                   <Input
@@ -220,6 +356,52 @@ export default function Login() {
             </p>
           </CardContent>
         </Card>
+
+        {/* Guest / public access */}
+        {!isAddInstance && (
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">or</span>
+            </div>
+          </div>
+        )}
+
+        {!isAddInstance && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Globe className="h-4 w-4 text-primary" />
+                Browse public repositories
+              </CardTitle>
+              <CardDescription>
+                Explore public projects on GitLab without a token. Write actions and private repos will be unavailable.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 pb-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="guest-host" className="text-xs">GitLab instance</Label>
+                <Input
+                  id="guest-host"
+                  type="url"
+                  placeholder="https://gitlab.com"
+                  value={guestHost}
+                  onChange={(e) => setGuestHost(e.target.value)}
+                />
+              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleBrowseAsGuest}
+              >
+                <Globe className="h-4 w-4 mr-2" />
+                Browse without signing in
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
