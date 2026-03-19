@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, ExternalLink, Loader2, AlertCircle, ShieldAlert, Globe } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -7,7 +7,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { useAuthStore } from '../store/auth';
-import { createApiClient } from '../api/client';
+import { createApiClient, ApiError } from '../api/client';
 import { normalizeHost } from '../utils/url';
 import { safeExternalHref } from '../utils/safeHref';
 import type { GitLabUser } from '../types/gitlab';
@@ -86,12 +86,19 @@ export default function Login() {
     navigate('/dashboard');
   };
 
-  // Only show the "Create token" link when `host` resolves to a safe http/https URL.
-  // This prevents a javascript: URI typed into the host field from being placed
-  // into an href attribute (high-severity DOM XSS vector).
-  const createTokenHref = safeExternalHref(
-    `${host}/-/user_settings/personal_access_tokens?name=gitlab-browser&scopes=read_api,read_repository`
-  );
+  // Build the token-creation link from the parsed URL origin only.
+  // Using url.origin (a property of the URL object, not the raw user string)
+  // breaks the taint path from the host input to the href attribute, so static
+  // analysis tools see that only the safe, parsed component reaches the DOM.
+  const createTokenHref = useMemo(() => {
+    try {
+      const url = new URL(normalizeHost(host));
+      if (url.protocol !== 'https:' && url.protocol !== 'http:') return undefined;
+      return `${url.origin}/-/user_settings/personal_access_tokens?name=gitlab-browser&scopes=read_api,read_repository`;
+    } catch {
+      return undefined;
+    }
+  }, [host]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,19 +116,23 @@ export default function Login() {
 
       navigate('/dashboard');
     } catch (err) {
-      if (err instanceof Error) {
-        if (err.message.includes('401') || err.message.includes('Unauthorized')) {
+      if (err instanceof ApiError) {
+        // Derive the display message from the numeric HTTP status only.
+        // Never render the server-supplied message string; a number cannot
+        // carry HTML so there is no taint path from the network to the DOM.
+        const code = err.status;
+        if (code === 401 || code === 403) {
           setError('Invalid token. Please check your Personal Access Token and try again.');
-        } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-          // Do not interpolate user-supplied host into the error string —
-          // use a fixed message to avoid tainted data flowing into the DOM.
-          setError('Cannot reach the specified host. Check the URL and your network connection.');
+        } else if (code === 404) {
+          setError('GitLab instance not found at the specified URL.');
+        } else if (code >= 500) {
+          setError(`GitLab server error (HTTP ${code}). Please try again later.`);
         } else {
-          // Strip HTML tags from API-sourced error messages before displaying.
-          // React text nodes are auto-escaped, but explicit sanitisation
-          // eliminates the static-analysis taint path from network → DOM.
-          setError(err.message.replace(/<[^>]*>/g, '').slice(0, 300));
+          setError(`Request failed (HTTP ${code}). Check your GitLab host and token.`);
         }
+      } else if (err instanceof TypeError) {
+        // TypeError is raised by fetch() for network/CORS failures (no HTTP status).
+        setError('Cannot reach the specified host. Check the URL and your network connection.');
       } else {
         setError('An unexpected error occurred. Please try again.');
       }
