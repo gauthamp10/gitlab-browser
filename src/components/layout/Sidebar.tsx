@@ -4,6 +4,7 @@ import {
   ChevronLeft, ChevronRight, Search, Pin, LogOut,
   Plus, Server
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { Separator } from '../ui/separator';
@@ -22,11 +23,15 @@ const navItems = [
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, logout, instances, host, switchInstance } = useAuthStore();
   const { sidebarCollapsed, toggleSidebar, pinnedProjects } = useSettingsStore();
 
   const handleLogout = () => {
     logout();
+    // Clear the entire query cache so no previous user's data leaks into
+    // the next session (guest or a different authenticated account).
+    queryClient.clear();
     navigate('/login');
   };
 
@@ -135,7 +140,7 @@ export default function Sidebar() {
                 {instances.map((instance) => (
                   <button
                     key={instance.host}
-                    onClick={() => switchInstance(instance.host)}
+                    onClick={() => { queryClient.clear(); switchInstance(instance.host); }}
                     className={cn(
                       'w-full flex items-center gap-2 px-2 py-1 rounded-md text-xs transition-colors',
                       instance.host === host

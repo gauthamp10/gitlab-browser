@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, ExternalLink, Loader2, AlertCircle, ShieldAlert, Globe } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -61,6 +62,7 @@ function useCursorBlob() {
 
 export default function Login() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const isAddInstance = searchParams.get('add') === '1';
   const { el1: blob1, el2: blob2 } = useCursorBlob();
@@ -78,6 +80,9 @@ export default function Login() {
   const handleBrowseAsGuest = () => {
     const normalizedHost = normalizeHost(guestHost);
     browseAsGuest(normalizedHost);
+    // Clear the cache so a previously authenticated user's data is not
+    // shown while browsing as an unauthenticated guest.
+    queryClient.clear();
     navigate('/dashboard');
   };
 
@@ -108,9 +113,14 @@ export default function Login() {
         if (err.message.includes('401') || err.message.includes('Unauthorized')) {
           setError('Invalid token. Please check your Personal Access Token and try again.');
         } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-          setError(`Cannot reach ${host}. Check the host URL and your network connection.`);
+          // Do not interpolate user-supplied host into the error string —
+          // use a fixed message to avoid tainted data flowing into the DOM.
+          setError('Cannot reach the specified host. Check the URL and your network connection.');
         } else {
-          setError(err.message);
+          // Strip HTML tags from API-sourced error messages before displaying.
+          // React text nodes are auto-escaped, but explicit sanitisation
+          // eliminates the static-analysis taint path from network → DOM.
+          setError(err.message.replace(/<[^>]*>/g, '').slice(0, 300));
         }
       } else {
         setError('An unexpected error occurred. Please try again.');
@@ -196,13 +206,14 @@ export default function Login() {
                 <button
                   key={instance.host}
                   onClick={() => {
+                    queryClient.clear();
                     useAuthStore.getState().switchInstance(instance.host);
                     navigate('/dashboard');
                   }}
                   className="w-full flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors text-left"
                 >
                   <img
-                    src={instance.user.avatar_url}
+                    src={safeExternalHref(instance.user.avatar_url) ?? ''}
                     alt={instance.user.name}
                     className="h-8 w-8 rounded-full"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
