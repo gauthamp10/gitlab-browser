@@ -238,7 +238,7 @@ export default function Login() {
                   type="url"
                   placeholder="https://gitlab.com"
                   value={host}
-                  onChange={(e) => setHost(e.target.value)}
+                  onChange={(e) => setHost(normalizeHost(e.target.value))}
                   required
                 />
                 {host.trimStart().startsWith('http://') && (
