@@ -5,11 +5,13 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    host: true,
+    // Bind only to loopback — prevents accidental exposure on shared networks.
+    // Set host: '0.0.0.0' explicitly if remote access is required.
+    host: 'localhost',
   },
   preview: {
     port: 4173,
-    host: true,
+    host: 'localhost',
   },
   build: {
     sourcemap: false,

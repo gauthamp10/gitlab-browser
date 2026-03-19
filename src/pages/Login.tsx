@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Eye, EyeOff, ExternalLink, Loader2, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, ExternalLink, Loader2, AlertCircle, ShieldAlert } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -137,6 +137,16 @@ export default function Login() {
                   onChange={(e) => setHost(e.target.value)}
                   required
                 />
+                {host.trimStart().startsWith('http://') && (
+                  <div className="flex items-start gap-2 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs">
+                    <ShieldAlert className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span>
+                      <strong>Insecure connection:</strong> your Personal Access Token will be
+                      transmitted unencrypted. Use <code>https://</code> unless this is an isolated
+                      internal network.
+                    </span>
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
                   Use <code>https://gitlab.com</code> or your self-hosted instance URL
                 </p>

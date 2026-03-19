@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import AnsiToHtml from 'ansi-to-html';
 import { Download } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '../../utils/cn';
@@ -11,48 +12,41 @@ interface JobLogProps {
   fetchLog: (projectId: number, jobId: number) => Promise<string>;
 }
 
-function parseAnsiToHtml(text: string): string {
-  const ansiMap: Record<string, string> = {
-    '0': 'color:inherit;font-weight:normal',
-    '1': 'font-weight:bold',
-    '31': 'color:#ff5555',
-    '32': 'color:#50fa7b',
-    '33': 'color:#f1fa8c',
-    '34': 'color:#6272a4',
-    '35': 'color:#ff79c6',
-    '36': 'color:#8be9fd',
-    '37': 'color:#f8f8f2',
-    '90': 'color:#6272a4',
-    '91': 'color:#ff6e6e',
-    '92': 'color:#69ff47',
-    '93': 'color:#ffffa5',
-    '94': 'color:#d6acff',
-    '95': 'color:#ff92df',
-    '96': 'color:#a4ffff',
-  };
-
-  let result = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-
-  result = result.replace(/\x1b\[([0-9;]*)m/g, (_, codes) => {
-    if (!codes || codes === '0') return '</span><span style="color:inherit">';
-    const parts = codes.split(';');
-    const styles = parts.map((c: string) => ansiMap[c]).filter(Boolean).join(';');
-    return styles ? `</span><span style="${styles}">` : '</span><span>';
-  });
-
-  result = result.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '');
-
-  return `<span style="color:#f8f8f2">${result}</span>`;
-}
+// ansi-to-html escapes HTML entities before converting ANSI codes, so the
+// output is safe to inject via dangerouslySetInnerHTML.
+const ansiConverter = new AnsiToHtml({
+  fg: '#f8f8f2',
+  bg: '#0d1117',
+  newline: false,
+  escapeXML: true, // HTML-entity-escapes < > & before processing ANSI
+  stream: false,
+  colors: {
+    0: '#0d1117',
+    1: '#ff5555',
+    2: '#50fa7b',
+    3: '#f1fa8c',
+    4: '#6272a4',
+    5: '#ff79c6',
+    6: '#8be9fd',
+    7: '#f8f8f2',
+    8: '#6272a4',
+    9: '#ff6e6e',
+    10: '#69ff47',
+    11: '#ffffa5',
+    12: '#d6acff',
+    13: '#ff92df',
+    14: '#a4ffff',
+    15: '#ffffff',
+  },
+});
 
 export default function JobLog({ projectId, jobId, status, fetchLog }: JobLogProps) {
   const [log, setLog] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const logHtml = useMemo(() => (log ? ansiConverter.toHtml(log) : ''), [log]);
   const isRunning = status === 'running' || status === 'pending' || status === 'preparing';
 
   useEffect(() => {
@@ -125,7 +119,7 @@ export default function JobLog({ projectId, jobId, status, fetchLog }: JobLogPro
           <span className="text-red-400">{error}</span>
         ) : log ? (
           <div
-            dangerouslySetInnerHTML={{ __html: parseAnsiToHtml(log) }}
+            dangerouslySetInnerHTML={{ __html: logHtml }}
             className="whitespace-pre-wrap break-all"
           />
         ) : (

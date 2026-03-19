@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { GitLabUser } from '../types/gitlab';
+import { encryptedLocalStorage } from '../utils/crypto';
 
 export interface GitLabInstance {
   host: string;
@@ -94,6 +95,10 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'glab-browser-auth',
+      // AES-GCM encrypted storage: PATs are never written to localStorage in
+      // plaintext. The decryption key lives only in sessionStorage, so data
+      // cannot be read after the browser session ends.
+      storage: createJSONStorage(() => encryptedLocalStorage),
       partialize: (state) => ({
         token: state.token,
         host: state.host,
