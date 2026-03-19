@@ -1,10 +1,15 @@
-import { useOutletContext, useParams, useLocation, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { ChevronRight, ArrowLeft } from 'lucide-react';
+import { useState } from 'react';
+import { useOutletContext, useParams, useLocation, Link, useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { ChevronRight, ArrowLeft, Pencil } from 'lucide-react';
+import { Button } from '../../components/ui/button';
 import { Skeleton } from '../../components/ui/skeleton';
 import FileViewerComponent from '../../components/code/FileViewer';
+import InlineEditor from '../../components/repository/InlineEditor';
 import ErrorMessage from '../../components/common/ErrorMessage';
+import PermGate from '../../components/common/PermGate';
 import { useApi } from '../../api';
+import { useTokenPermissions } from '../../hooks/useTokenPermissions';
 import { getFileExtension, getLanguageFromExtension } from '../../utils/url';
 import { formatFileSize } from '../../utils/format';
 import type { GitLabProject } from '../../types/gitlab';
@@ -17,7 +22,11 @@ export default function FileViewer() {
   const { id } = useParams<{ id: string }>();
   const { project } = useOutletContext<OutletContext>();
   const location = useLocation();
+  const navigate = useNavigate();
   const api = useApi();
+  const queryClient = useQueryClient();
+  const { canWriteRepo } = useTokenPermissions();
+  const [isEditing, setIsEditing] = useState(false);
 
   // Extract file path from URL: /projects/:id/repository/blob/:path
   const blobBase = `/projects/${id}/repository/blob/`;
@@ -61,6 +70,29 @@ export default function FileViewer() {
     ? `${api.client.base}/projects/${id}/repository/files/${encodeURIComponent(filePath)}/raw?ref=${ref}`
     : undefined;
 
+  const handleSave = async ({
+    content: newContent,
+    commitMessage,
+    branch: targetBranch,
+  }: { content: string; commitMessage: string; branch: string }) => {
+    // Encode to base64 so non-ASCII characters are preserved
+    const encoded = btoa(unescape(encodeURIComponent(newContent)));
+    await api.repository.updateFile(Number(id), filePath, {
+      branch: targetBranch,
+      content: encoded,
+      commit_message: commitMessage,
+      last_commit_id: file?.last_commit_id,
+      encoding: 'base64',
+    });
+    // Refresh the file query so the viewer shows the updated content
+    await queryClient.invalidateQueries({ queryKey: ['project', id, 'file', filePath] });
+    setIsEditing(false);
+    // If the user committed to a different branch, navigate with that ref
+    if (targetBranch !== ref) {
+      navigate(`${location.pathname}?ref=${encodeURIComponent(targetBranch)}`);
+    }
+  };
+
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-4">
       {/* Breadcrumb */}
@@ -85,16 +117,36 @@ export default function FileViewer() {
         ))}
       </div>
 
-      {/* Back button */}
-      <Link
-        to={parentPath
-          ? `/projects/${id}/repository/tree/${parentPath}`
-          : `/projects/${id}/repository`}
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to {parentPath ? pathParts[pathParts.length - 2] : project.name}
-      </Link>
+      {/* Back button + Edit action */}
+      <div className="flex items-center justify-between">
+        <Link
+          to={parentPath
+            ? `/projects/${id}/repository/tree/${parentPath}`
+            : `/projects/${id}/repository`}
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to {parentPath ? pathParts[pathParts.length - 2] : project.name}
+        </Link>
+
+        {file && !isBinary && !isEditing && (
+          <PermGate
+            allowed={canWriteRepo}
+            reason='Requires "api" or "write_repository" scope to edit files'
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditing(true)}
+              disabled={!canWriteRepo}
+              className="gap-1.5"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </Button>
+          </PermGate>
+        )}
+      </div>
 
       {isLoading ? (
         <div className="border rounded-lg p-4 space-y-2">
@@ -131,6 +183,15 @@ export default function FileViewer() {
               </div>
             )}
           </div>
+        ) : isEditing ? (
+          <InlineEditor
+            filename={file.file_name}
+            initialContent={content}
+            branch={ref}
+            lastCommitId={file.last_commit_id}
+            onSave={handleSave}
+            onCancel={() => setIsEditing(false)}
+          />
         ) : (
           <FileViewerComponent
             content={content}
