@@ -1,0 +1,67 @@
+name: Security
+
+on:
+  push:
+    branches: [main, feature/base]
+  pull_request:
+    branches: [main, feature/base]
+  schedule:
+    # Run every Monday at 08:00 UTC to catch newly disclosed vulnerabilities
+    - cron: "0 8 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  # ── npm audit ─────────────────────────────────────────────────────────────────
+  audit:
+    name: npm audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Audit for high/critical vulnerabilities
+        # Exit non-zero only on high or critical severity findings.
+        # Moderate/low are reported but do not fail the build.
+        run: npm audit --audit-level=high
+
+  # ── Dependency Review (PRs only) ──────────────────────────────────────────────
+  # Blocks PRs that introduce new dependencies with known vulnerabilities.
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: always
+
+  # ── Secrets scan ──────────────────────────────────────────────────────────────
+  # Detects accidentally committed secrets, tokens, or credentials.
+  secrets-scan:
+    name: Secret Scan (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

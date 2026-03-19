@@ -52,14 +52,18 @@ function toBase64(buf: ArrayBuffer): string {
   return btoa(String.fromCharCode(...new Uint8Array(buf)));
 }
 
-function fromBase64(b64: string): ArrayBuffer {
-  const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-  return bytes.buffer;
+// Explicitly allocates an ArrayBuffer (never SharedArrayBuffer) so the return
+// type is Uint8Array<ArrayBuffer> — assignable to BufferSource in TypeScript 5.6+.
+function fromBase64(b64: string): Uint8Array<ArrayBuffer> {
+  const decoded = atob(b64);
+  const buffer = new ArrayBuffer(decoded.length);
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < decoded.length; i++) bytes[i] = decoded.charCodeAt(i);
+  return bytes;
 }
 
 export async function encrypt(plaintext: string): Promise<string> {
   const key = await getOrCreateKey();
-  // Separate declaration avoids Uint8Array<ArrayBufferLike> return type issue
   const iv = new Uint8Array(12);
   crypto.getRandomValues(iv);
   const encoded = new TextEncoder().encode(plaintext);
@@ -76,7 +80,7 @@ export async function decrypt(encryptedJson: string): Promise<string> {
   const key = await getOrCreateKey();
   const parsed = JSON.parse(encryptedJson) as EncryptedPayload;
   if (parsed.v !== 1) throw new Error('Unsupported encryption schema version');
-  const iv = new Uint8Array(fromBase64(parsed.iv));
+  const iv = fromBase64(parsed.iv);
   const ct = fromBase64(parsed.ct);
   const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
   return new TextDecoder().decode(plaintext);

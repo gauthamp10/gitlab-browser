@@ -1,0 +1,10 @@
+services:
+  test:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: sh -c "npm install --legacy-peer-deps --silent && npm test"
+    environment:
+      - CI=true
+      - NODE_ENV=test
