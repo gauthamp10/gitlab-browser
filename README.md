@@ -13,6 +13,22 @@ A modern, self-hostable GitLab frontend that authenticates with a **Personal Acc
 
 ---
 
+## Screenshots
+
+| Login | Dashboard |
+|-------|-----------|
+| ![Login](docs/screenshots/login.png) | ![Repository](docs/screenshots/repository.png) |
+
+| Git Graph | Merge Requests |
+|-----------|----------------|
+| ![Git Graph](docs/screenshots/git-graph.png) | ![Merge Requests](docs/screenshots/merge-request.png) |
+
+| Pipelines | Insights |
+|-----------|----------|
+| ![Pipelines](docs/screenshots/pipeline.png) | ![Insights](docs/screenshots/insights.png) |
+
+---
+
 ## Features
 
 ### Repository
