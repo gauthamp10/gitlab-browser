@@ -2,6 +2,8 @@
 
 A modern, self-hostable GitLab frontend that authenticates with a **Personal Access Token** — no OAuth, no user licenses required. Browse and manage your GitLab projects entirely from your own deployment.
 
+[![CI](https://github.com/gauthamp10/glabrowser/actions/workflows/ci.yml/badge.svg)](https://github.com/gauthamp10/glabrowser/actions/workflows/ci.yml)
+[![Security](https://github.com/gauthamp10/glabrowser/actions/workflows/security.yml/badge.svg)](https://github.com/gauthamp10/glabrowser/actions/workflows/security.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](Dockerfile)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)

@@ -52,14 +52,14 @@ function toBase64(buf: ArrayBuffer): string {
   return btoa(String.fromCharCode(...new Uint8Array(buf)));
 }
 
-function fromBase64(b64: string): ArrayBuffer {
-  const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-  return bytes.buffer;
+// Returns Uint8Array (an ArrayBufferView) which is universally accepted by
+// WebCrypto in both browser and Node/jsdom environments.
+function fromBase64(b64: string): Uint8Array {
+  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 }
 
 export async function encrypt(plaintext: string): Promise<string> {
   const key = await getOrCreateKey();
-  // Separate declaration avoids Uint8Array<ArrayBufferLike> return type issue
   const iv = new Uint8Array(12);
   crypto.getRandomValues(iv);
   const encoded = new TextEncoder().encode(plaintext);
@@ -76,7 +76,7 @@ export async function decrypt(encryptedJson: string): Promise<string> {
   const key = await getOrCreateKey();
   const parsed = JSON.parse(encryptedJson) as EncryptedPayload;
   if (parsed.v !== 1) throw new Error('Unsupported encryption schema version');
-  const iv = new Uint8Array(fromBase64(parsed.iv));
+  const iv = fromBase64(parsed.iv);
   const ct = fromBase64(parsed.ct);
   const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
   return new TextDecoder().decode(plaintext);
