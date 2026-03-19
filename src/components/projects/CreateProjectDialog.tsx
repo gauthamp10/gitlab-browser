@@ -23,7 +23,7 @@ interface CreateProjectDialogProps {
 function toSlug(name: string) {
   return name
     .toLowerCase()
-    .replace(/[^a-z0-9_.\-]+/g, '-')
+    .replace(/[^a-z0-9_.-]+/g, '-')
     .replace(/^[-_.]+|[-_.]+$/g, '')
     .slice(0, 255);
 }

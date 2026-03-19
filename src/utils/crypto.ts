@@ -52,10 +52,14 @@ function toBase64(buf: ArrayBuffer): string {
   return btoa(String.fromCharCode(...new Uint8Array(buf)));
 }
 
-// Returns Uint8Array (an ArrayBufferView) which is universally accepted by
-// WebCrypto in both browser and Node/jsdom environments.
-function fromBase64(b64: string): Uint8Array {
-  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+// Explicitly allocates an ArrayBuffer (never SharedArrayBuffer) so the return
+// type is Uint8Array<ArrayBuffer> — assignable to BufferSource in TypeScript 5.6+.
+function fromBase64(b64: string): Uint8Array<ArrayBuffer> {
+  const decoded = atob(b64);
+  const buffer = new ArrayBuffer(decoded.length);
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < decoded.length; i++) bytes[i] = decoded.charCodeAt(i);
+  return bytes;
 }
 
 export async function encrypt(plaintext: string): Promise<string> {

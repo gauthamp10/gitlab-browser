@@ -119,8 +119,7 @@ describe('Login — form submission', () => {
     const fakeUser = {
       id: 1, username: 'alice', name: 'Alice', email: 'alice@example.com',
       avatar_url: '', web_url: '', state: 'active', created_at: '',
-      bio: '', location: '', public_email: '', skype: '', linkedin: '',
-      twitter: '', website_url: '', organization: '',
+      bio: null, location: null, public_email: null,
     };
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true, status: 200,

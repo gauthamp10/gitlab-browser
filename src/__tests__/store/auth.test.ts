@@ -15,14 +15,9 @@ function makeUser(username: string): GitLabUser {
     web_url: `https://gitlab.com/${username}`,
     state: 'active',
     created_at: new Date().toISOString(),
-    bio: '',
-    location: '',
-    public_email: '',
-    skype: '',
-    linkedin: '',
-    twitter: '',
-    website_url: '',
-    organization: '',
+    bio: null,
+    location: null,
+    public_email: null,
   };
 }
 
