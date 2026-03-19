@@ -3,7 +3,7 @@ import { Link, useOutletContext, useParams, useLocation } from 'react-router-dom
 import { useQuery } from '@tanstack/react-query';
 import {
   ChevronRight, GitBranch, GitCommit,
-  Download, Clock, ArrowLeft, ChevronDown, Loader2,
+  Download, Clock, ArrowLeft, ChevronDown, Plus,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Skeleton } from '../../components/ui/skeleton';
@@ -19,6 +19,9 @@ import EmptyState from '../../components/common/EmptyState';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { useApi } from '../../api';
 import { getFileExtension } from '../../utils/url';
+import { useTokenPermissions } from '../../hooks/useTokenPermissions';
+import CreateBranchDialog from '../../components/repository/CreateBranchDialog';
+import PermGate from '../../components/common/PermGate';
 import type { GitLabProject, GitLabTreeItem } from '../../types/gitlab';
 
 interface OutletContext {
@@ -95,21 +98,29 @@ export default function Repository() {
       ]
     : [];
 
-  const [downloading, setDownloading] = useState(false);
+  const [showCreateBranch, setShowCreateBranch] = useState(false);
+  const { canWriteRepo, canReadRepo } = useTokenPermissions();
 
-  const handleDownload = async (format: 'zip' | 'tar.gz') => {
+  const handleDownload = (format: 'zip' | 'tar.gz') => {
     if (!project) return;
-    setDownloading(true);
-    try {
-      await api.repository.downloadArchive(Number(id), ref, project.path, format);
-    } catch { /* ignore */ }
-    setDownloading(false);
+    api.repository.downloadArchive(Number(id), ref, project.path, format);
   };
 
   if (!project) return null;
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-4">
+      <CreateBranchDialog
+        open={showCreateBranch}
+        onClose={() => setShowCreateBranch(false)}
+        projectId={Number(id)}
+        currentRef={ref}
+        onCreated={(branchName) => {
+          setRef(branchName);
+          setShowCreateBranch(false);
+        }}
+      />
+
       {/* Branch selector + actions */}
       <div className="flex items-center gap-3 flex-wrap">
         <Select value={ref} onValueChange={(v) => { if (v) setRef(v); }}>
@@ -164,14 +175,24 @@ export default function Repository() {
           ))}
         </div>
 
-        <DropdownMenu>
+        <PermGate
+          allowed={canWriteRepo}
+          reason='Requires "api" or "write_repository" scope to create branches'
+        >
+          <Button variant="outline" size="sm" onClick={() => setShowCreateBranch(true)} disabled={!canWriteRepo}>
+            <Plus className="h-4 w-4 mr-1" />
+            New branch
+          </Button>
+        </PermGate>
+
+        <PermGate
+          allowed={canReadRepo}
+          reason='Requires "api" or "read_repository" scope to download archives'
+        >
+          <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" disabled={downloading}>
-              {downloading ? (
-                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4 mr-1" />
-              )}
+            <Button variant="outline" size="sm" disabled={!canReadRepo}>
+              <Download className="h-4 w-4 mr-1" />
               Download
               <ChevronDown className="h-3.5 w-3.5 ml-1 opacity-60" />
             </Button>
@@ -187,6 +208,7 @@ export default function Repository() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </PermGate>
       </div>
 
       {/* Last commit info */}

@@ -20,6 +20,8 @@ import CreateMRDialog from '../../components/mergeRequests/CreateMRDialog';
 import { useApi } from '../../api';
 import { useSearch } from '../../hooks/useSearch';
 import { usePagination } from '../../hooks/usePagination';
+import { useTokenPermissions } from '../../hooks/useTokenPermissions';
+import PermGate from '../../components/common/PermGate';
 import type { GitLabProject, GitLabMergeRequest } from '../../types/gitlab';
 
 interface OutletContext { project: GitLabProject }
@@ -88,6 +90,7 @@ export default function MergeRequests() {
   const [state, setState] = useState<'opened' | 'closed' | 'merged' | 'all'>('opened');
   const [orderBy, setOrderBy] = useState('created_at');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const { canWrite } = useTokenPermissions();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['project', id, 'merge_requests', state, debouncedQuery, page, perPage, orderBy],
@@ -107,10 +110,12 @@ export default function MergeRequests() {
     <div className="p-6 max-w-6xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Merge Requests</h2>
-        <Button size="sm" onClick={() => setShowCreateDialog(true)}>
-          <Plus className="h-4 w-4 mr-1" />
-          New MR
-        </Button>
+        <PermGate allowed={canWrite} reason='Requires "api" scope to create merge requests'>
+          <Button size="sm" onClick={() => setShowCreateDialog(true)} disabled={!canWrite}>
+            <Plus className="h-4 w-4 mr-1" />
+            New MR
+          </Button>
+        </PermGate>
       </div>
 
       <CreateMRDialog

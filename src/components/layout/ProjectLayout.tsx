@@ -1,9 +1,9 @@
 import { Link, Outlet, useParams, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  GitFork, Star, Eye, Lock, Unlock, Globe, ChevronRight,
-  GitBranch, AlertCircle, GitPullRequest, Play, BookOpen,
-  BarChart2, GitCompare, Pin
+  GitFork, Star, Lock, Unlock, Globe, ChevronRight,
+  GitBranch, AlertCircle, GitPullRequest, Play,
+  BarChart2, GitCompare, Pin, Settings
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -16,14 +16,13 @@ import { formatNumber } from '../../utils/format';
 import { cn } from '../../utils/cn';
 
 const projectNavItems = [
-  { path: '', label: 'Overview', icon: Eye },
   { path: '/repository', label: 'Repository', icon: GitBranch },
   { path: '/issues', label: 'Issues', icon: AlertCircle },
   { path: '/merge_requests', label: 'Merge Requests', icon: GitPullRequest },
   { path: '/pipelines', label: 'Pipelines', icon: Play },
-  { path: '/wiki', label: 'Wiki', icon: BookOpen },
   { path: '/insights', label: 'Insights', icon: BarChart2 },
   { path: '/compare', label: 'Compare', icon: GitCompare },
+  { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export default function ProjectLayout() {
@@ -46,7 +45,7 @@ export default function ProjectLayout() {
   const activeNav = projectNavItems
     .slice()
     .reverse()
-    .find((item) => currentPath.startsWith(item.path) || (item.path === '' && currentPath === ''))?.path ?? '';
+    .find((item) => currentPath.startsWith(item.path))?.path ?? '';
 
   if (isLoading) {
     return (
@@ -174,7 +173,7 @@ export default function ProjectLayout() {
               <Icon className="h-4 w-4" />
               {label}
               {label === 'Issues' && project.open_issues_count > 0 && (
-                <span className="text-xs bg-muted rounded-full px-1.5 py-0.5">
+                <span className="text-xs bg-muted rounded-full px-1.5 py-0.5 min-w-[1.25rem] text-center">
                   {formatNumber(project.open_issues_count)}
                 </span>
               )}

@@ -1,5 +1,5 @@
 import type { GitLabApiClient } from './client';
-import type { GitLabTreeItem, GitLabFile, GitLabBlame } from '../types/gitlab';
+import type { GitLabTreeItem, GitLabFile, GitLabBlame, GitLabBranch } from '../types/gitlab';
 
 export function createRepositoryApi(client: GitLabApiClient) {
   return {
@@ -51,24 +51,35 @@ export function createRepositoryApi(client: GitLabApiClient) {
     getArchive: (projectId: number, ref: string, format: 'tar.gz' | 'zip' = 'tar.gz') =>
       `${client.base}/projects/${projectId}/repository/archive.${format}?ref=${encodeURIComponent(ref)}`,
 
-    downloadArchive: async (
+    createBranch: (projectId: number, branch: string, ref: string) =>
+      client.request<GitLabBranch>(`/projects/${projectId}/repository/branches`, {
+        method: 'POST',
+        body: JSON.stringify({ branch, ref }),
+      }),
+
+    deleteBranch: (projectId: number, branch: string) =>
+      client.request<void>(
+        `/projects/${projectId}/repository/branches/${encodeURIComponent(branch)}`,
+        { method: 'DELETE' }
+      ),
+
+    // Uses private_token query param so the browser handles the download natively,
+    // avoiding CORS issues with GitLab's redirect to object storage.
+    downloadArchive: (
       projectId: number,
       ref: string,
       filename: string,
       format: 'tar.gz' | 'zip' = 'zip'
-    ): Promise<void> => {
-      const blob = await client.fetchBlob(
-        `/projects/${projectId}/repository/archive.${format}`,
-        { ref }
-      );
-      const objectUrl = URL.createObjectURL(blob);
+    ): void => {
+      const url =
+        `${client.base}/projects/${projectId}/repository/archive.${format}` +
+        `?ref=${encodeURIComponent(ref)}&private_token=${encodeURIComponent(client.token)}`;
       const a = document.createElement('a');
-      a.href = objectUrl;
+      a.href = url;
       a.download = `${filename}-${ref}.${format}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     },
   };
 }

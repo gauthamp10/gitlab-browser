@@ -1,10 +1,9 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Star, GitFork, Clock, CheckSquare, Activity, Globe, Lock, Unlock
+  Star, GitFork, Clock, Activity, Globe, Lock, Unlock
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
 import { Button } from '../components/ui/button';
 import ContributionHeatmap from '../components/common/ContributionHeatmap';
@@ -60,9 +59,27 @@ function ProjectCard({ project }: { project: GitLabProject }) {
   );
 }
 
+import type { GitLabEvent } from '../types/gitlab';
+
+function getEventLink(event: GitLabEvent): string | null {
+  if (!event.project_id) return null;
+  const base = `/projects/${event.project_id}`;
+  if (event.target_type === 'Issue' && event.target_iid) {
+    return `${base}/issues/${event.target_iid}`;
+  }
+  if (event.target_type === 'MergeRequest' && event.target_iid) {
+    return `${base}/merge_requests/${event.target_iid}`;
+  }
+  if (event.push_data) {
+    return `${base}/repository`;
+  }
+  return base;
+}
+
 function ActivityFeed() {
   const api = useApi();
   const { user } = useAuthStore();
+  const navigate = useNavigate();
 
   const { data, isLoading } = useQuery({
     queryKey: ['user-events'],
@@ -92,32 +109,53 @@ function ActivityFeed() {
 
   return (
     <div className="divide-y divide-border">
-      {data.items.map((event) => (
-        <div key={event.id} className="flex items-start gap-3 p-3 hover:bg-muted/30 transition-colors">
-          <UserAvatar user={event.author} size="sm" showTooltip={false} />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm">
-              <span className="font-medium">{event.author.name}</span>
-              {' '}
-              <span className="text-muted-foreground">{event.action_name}</span>
-              {event.target_title && (
-                <>
-                  {' '}
-                  <span className="font-medium truncate">{event.target_title}</span>
-                </>
-              )}
-              {event.push_data && (
-                <span className="text-muted-foreground">
-                  {' '}pushed to <code className="text-xs bg-muted px-1 py-0.5 rounded">{event.push_data.ref}</code>
-                </span>
-              )}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              <TimeAgo date={event.created_at} />
-            </p>
+      {data.items.map((event) => {
+        const link = getEventLink(event);
+        const content = (
+          <>
+            <UserAvatar user={event.author} size="sm" showTooltip={false} />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm">
+                <span className="font-medium">{event.author.name}</span>
+                {' '}
+                <span className="text-muted-foreground">{event.action_name}</span>
+                {event.target_title && (
+                  <>
+                    {' '}
+                    <span className="font-medium truncate">{event.target_title}</span>
+                  </>
+                )}
+                {event.push_data && (
+                  <span className="text-muted-foreground">
+                    {' '}to <code className="text-xs bg-muted px-1 py-0.5 rounded">{event.push_data.ref}</code>
+                  </span>
+                )}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                <TimeAgo date={event.created_at} />
+              </p>
+            </div>
+          </>
+        );
+
+        if (link) {
+          return (
+            <button
+              key={event.id}
+              onClick={() => navigate(link)}
+              className="w-full flex items-start gap-3 p-3 hover:bg-muted/30 transition-colors text-left"
+            >
+              {content}
+            </button>
+          );
+        }
+
+        return (
+          <div key={event.id} className="flex items-start gap-3 p-3">
+            {content}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -129,17 +167,12 @@ export default function Dashboard() {
   const { data: recentProjects, isLoading: loadingProjects } = useQuery({
     queryKey: ['projects', 'recent'],
     queryFn: () =>
-      api.projects.list({ membership: true, order_by: 'last_activity_at', sort: 'desc', per_page: 8 }),
+      api.projects.list({ order_by: 'last_activity_at', sort: 'desc', per_page: 8 }),
   });
 
   const { data: starredProjects, isLoading: loadingStarred } = useQuery({
     queryKey: ['projects', 'starred'],
     queryFn: () => api.projects.list({ starred: true, per_page: 6 }),
-  });
-
-  const { data: todos } = useQuery({
-    queryKey: ['todos', 'count'],
-    queryFn: () => api.todos.list({ state: 'pending', per_page: 5 }),
   });
 
   const { data: events } = useQuery({
@@ -161,15 +194,8 @@ export default function Dashboard() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {[
-          {
-            label: 'Open Todos',
-            value: todos?.pagination.total ?? '—',
-            icon: CheckSquare,
-            to: '/todos',
-            color: 'text-blue-500',
-          },
           {
             label: 'Starred Projects',
             value: starredProjects?.pagination.total ?? '—',
@@ -255,44 +281,8 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Right: Activity + Todos + Starred */}
+        {/* Right: Activity + Starred */}
         <div className="space-y-6">
-          {/* Todos */}
-          {todos && todos.items.length > 0 && (
-            <Card>
-              <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                <CardTitle className="text-base">Todos</CardTitle>
-                <Badge>{todos.pagination.total}</Badge>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y divide-border">
-                  {todos.items.slice(0, 3).map((todo) => (
-                    <a
-                      key={todo.id}
-                      href={todo.target_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-start gap-2 p-3 hover:bg-muted/50 transition-colors"
-                    >
-                      <CheckSquare className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-sm line-clamp-1">{todo.body}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{todo.action_name}</p>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-                {(todos.pagination.total ?? 0) > 3 && (
-                  <div className="p-3 border-t">
-                    <Button variant="ghost" size="sm" className="w-full" asChild>
-                      <Link to="/todos">View all todos</Link>
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
           {/* Activity feed */}
           <Card>
             <CardHeader className="pb-2">

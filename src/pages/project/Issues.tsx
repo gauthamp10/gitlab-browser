@@ -15,6 +15,8 @@ import EmptyState from '../../components/common/EmptyState';
 import { useApi } from '../../api';
 import { useSearch } from '../../hooks/useSearch';
 import { usePagination } from '../../hooks/usePagination';
+import { useTokenPermissions } from '../../hooks/useTokenPermissions';
+import PermGate from '../../components/common/PermGate';
 import type { GitLabProject } from '../../types/gitlab';
 
 interface OutletContext { project: GitLabProject }
@@ -27,6 +29,7 @@ export default function Issues() {
   const { page, perPage, setPage } = usePagination(20);
   const [state, setState] = useState<'opened' | 'closed' | 'all'>('opened');
   const [orderBy, setOrderBy] = useState('created_at');
+  const { canWrite } = useTokenPermissions();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['project', id, 'issues', state, debouncedQuery, page, perPage, orderBy],
@@ -46,12 +49,18 @@ export default function Issues() {
     <div className="p-6 max-w-6xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Issues</h2>
-        <Button size="sm" asChild>
-          <a href={`${project.web_url}/-/issues/new`} target="_blank" rel="noopener noreferrer">
-            <Plus className="h-4 w-4 mr-1" />
-            New issue
-          </a>
-        </Button>
+        <PermGate allowed={canWrite} reason='Requires "api" scope to create issues'>
+          <Button size="sm" asChild={canWrite} disabled={!canWrite}>
+            {canWrite ? (
+              <a href={`${project.web_url}/-/issues/new`} target="_blank" rel="noopener noreferrer">
+                <Plus className="h-4 w-4 mr-1" />
+                New issue
+              </a>
+            ) : (
+              <><Plus className="h-4 w-4 mr-1" />New issue</>
+            )}
+          </Button>
+        </PermGate>
       </div>
 
       {/* Filters */}

@@ -90,6 +90,32 @@ export function createProjectsApi(client: GitLabApiClient) {
         body: JSON.stringify(params),
       }),
 
+    update: (id: number, params: {
+      name?: string;
+      description?: string;
+      default_branch?: string;
+      visibility?: 'private' | 'internal' | 'public';
+      merge_method?: 'merge' | 'rebase_merge' | 'ff';
+      squash_option?: 'never' | 'always' | 'default_on' | 'default_off';
+      remove_source_branch_after_merge?: boolean;
+      only_allow_merge_if_pipeline_succeeds?: boolean;
+      only_allow_merge_if_all_discussions_are_resolved?: boolean;
+      archived?: boolean;
+    }) =>
+      client.request<GitLabProject>(`/projects/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(params),
+      }),
+
+    archive: (id: number) =>
+      client.request<GitLabProject>(`/projects/${id}/archive`, { method: 'POST' }),
+
+    unarchive: (id: number) =>
+      client.request<GitLabProject>(`/projects/${id}/unarchive`, { method: 'POST' }),
+
+    deleteProject: (id: number) =>
+      client.request<void>(`/projects/${id}`, { method: 'DELETE' }),
+
     listNamespaces: (search?: string) =>
       client.requestPaged<GitLabNamespace>('/namespaces', {
         params: search ? { search } : undefined,

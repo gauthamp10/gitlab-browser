@@ -14,11 +14,9 @@ import Projects from './pages/Projects';
 import Groups from './pages/Groups';
 import GroupDetail from './pages/GroupDetail';
 import Profile from './pages/Profile';
-import Todos from './pages/Todos';
 import Search from './pages/Search';
 
 // Project pages
-import Overview from './pages/project/Overview';
 import Repository from './pages/project/Repository';
 import FileViewer from './pages/project/FileViewer';
 import Issues from './pages/project/Issues';
@@ -27,9 +25,9 @@ import MergeRequests from './pages/project/MergeRequests';
 import MRDetail from './pages/project/MRDetail';
 import Pipelines from './pages/project/Pipelines';
 import PipelineDetail from './pages/project/PipelineDetail';
-import Wiki from './pages/project/Wiki';
 import Compare from './pages/project/Compare';
 import Insights from './pages/project/Insights';
+import ProjectSettings from './pages/project/Settings';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -62,11 +60,10 @@ export default function App() {
                   <Route path="/groups/:id" element={<GroupDetail />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/profile/:username" element={<Profile />} />
-                  <Route path="/todos" element={<Todos />} />
                   <Route path="/search" element={<Search />} />
 
                   <Route path="/projects/:id" element={<ProjectLayout />}>
-                    <Route index element={<Overview />} />
+                    <Route index element={<Navigate to="repository" replace />} />
                     <Route path="repository" element={<Repository />} />
                     <Route path="repository/tree/*" element={<Repository />} />
                     <Route path="repository/blob/*" element={<FileViewer />} />
@@ -77,9 +74,9 @@ export default function App() {
                     <Route path="merge_requests/:iid" element={<MRDetail />} />
                     <Route path="pipelines" element={<Pipelines />} />
                     <Route path="pipelines/:pid" element={<PipelineDetail />} />
-                    <Route path="wiki" element={<Wiki />} />
                     <Route path="compare" element={<Compare />} />
                     <Route path="insights" element={<Insights />} />
+                    <Route path="settings" element={<ProjectSettings />} />
                   </Route>
                 </Route>
               </Route>

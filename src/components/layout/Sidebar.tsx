@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, FolderOpen, Users, CheckSquare,
+  LayoutDashboard, FolderOpen, Users,
   ChevronLeft, ChevronRight, Search, Pin, LogOut,
   Plus, Server
 } from 'lucide-react';
@@ -17,7 +17,6 @@ const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', shortcut: 'g d' },
   { to: '/projects', icon: FolderOpen, label: 'Projects', shortcut: 'g p' },
   { to: '/groups', icon: Users, label: 'Groups', shortcut: 'g g' },
-  { to: '/todos', icon: CheckSquare, label: 'Todos', shortcut: 'g t' },
 ];
 
 export default function Sidebar() {

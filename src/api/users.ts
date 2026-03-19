@@ -42,5 +42,16 @@ export function createUsersApi(client: GitLabApiClient) {
 
     getSshKeys: () =>
       client.request<Array<{ id: number; title: string; key: string; created_at: string }>>('/user/keys'),
+
+    getTokenInfo: () =>
+      client.request<{
+        id: number;
+        name: string;
+        scopes: string[];
+        created_at: string;
+        expires_at: string | null;
+        active: boolean;
+        revoked: boolean;
+      }>('/personal_access_tokens/self'),
   };
 }
