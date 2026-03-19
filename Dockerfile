@@ -21,9 +21,12 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Non-root user for security
+# mkdir -p /var/run ensures the directory exists in build environments
+# that don't pre-create it (e.g. DigitalOcean App Platform / Kaniko)
 RUN chown -R nginx:nginx /usr/share/nginx/html && \
     chown -R nginx:nginx /var/cache/nginx && \
     chown -R nginx:nginx /var/log/nginx && \
+    mkdir -p /var/run && \
     touch /var/run/nginx.pid && \
     chown -R nginx:nginx /var/run/nginx.pid
 
