@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useAuthStore } from '../store/auth';
 import { createApiClient } from '../api/client';
 import { normalizeHost } from '../utils/url';
+import { safeExternalHref } from '../utils/safeHref';
 import type { GitLabUser } from '../types/gitlab';
 
 // Smoothly follows the cursor using lerp on each animation frame.
@@ -79,6 +80,13 @@ export default function Login() {
     browseAsGuest(normalizedHost);
     navigate('/dashboard');
   };
+
+  // Only show the "Create token" link when `host` resolves to a safe http/https URL.
+  // This prevents a javascript: URI typed into the host field from being placed
+  // into an href attribute (high-severity DOM XSS vector).
+  const createTokenHref = safeExternalHref(
+    `${host}/-/user_settings/personal_access_tokens?name=gitlab-browser&scopes=read_api,read_repository`
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -259,15 +267,17 @@ export default function Login() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="token">Personal Access Token</Label>
-                  <a
-                    href={`${host}/-/user_settings/personal_access_tokens?name=gitlab-browser&scopes=read_api,read_repository`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-primary hover:underline flex items-center gap-1"
-                  >
-                    Create token
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
+                  {createTokenHref && (
+                    <a
+                      href={createTokenHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary hover:underline flex items-center gap-1"
+                    >
+                      Create token
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
                 </div>
                 <div className="relative">
                   <Input
