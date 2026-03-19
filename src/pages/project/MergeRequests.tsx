@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useOutletContext, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { GitPullRequest, Plus, Search, Filter, MessageSquare, CheckCircle, GitMerge } from 'lucide-react';
+import { GitPullRequest, Plus, Search, Filter, MessageSquare, GitMerge } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Card } from '../../components/ui/card';
@@ -16,6 +16,7 @@ import UserAvatar from '../../components/common/UserAvatar';
 import TimeAgo from '../../components/common/TimeAgo';
 import Pagination from '../../components/common/Pagination';
 import EmptyState from '../../components/common/EmptyState';
+import CreateMRDialog from '../../components/mergeRequests/CreateMRDialog';
 import { useApi } from '../../api';
 import { useSearch } from '../../hooks/useSearch';
 import { usePagination } from '../../hooks/usePagination';
@@ -86,6 +87,7 @@ export default function MergeRequests() {
   const { page, perPage, setPage } = usePagination(20);
   const [state, setState] = useState<'opened' | 'closed' | 'merged' | 'all'>('opened');
   const [orderBy, setOrderBy] = useState('created_at');
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['project', id, 'merge_requests', state, debouncedQuery, page, perPage, orderBy],
@@ -105,13 +107,17 @@ export default function MergeRequests() {
     <div className="p-6 max-w-6xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Merge Requests</h2>
-        <Button size="sm" asChild>
-          <a href={`${project.web_url}/-/merge_requests/new`} target="_blank" rel="noopener noreferrer">
-            <Plus className="h-4 w-4 mr-1" />
-            New MR
-          </a>
+        <Button size="sm" onClick={() => setShowCreateDialog(true)}>
+          <Plus className="h-4 w-4 mr-1" />
+          New MR
         </Button>
       </div>
+
+      <CreateMRDialog
+        open={showCreateDialog}
+        onClose={() => setShowCreateDialog(false)}
+        project={project}
+      />
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
