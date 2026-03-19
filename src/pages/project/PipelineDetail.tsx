@@ -11,13 +11,11 @@ import TimeAgo from '../../components/common/TimeAgo';
 import { useApi } from '../../api';
 import { formatDuration } from '../../utils/format';
 import { cn } from '../../utils/cn';
-import type { GitLabProject, GitLabJob } from '../../types/gitlab';
-
-interface OutletContext { project: GitLabProject }
+import type { GitLabJob } from '../../types/gitlab';
 
 export default function PipelineDetail() {
   const { id, pid } = useParams<{ id: string; pid: string }>();
-  const { project } = useOutletContext<OutletContext>();
+  useOutletContext();
   const api = useApi();
   const qc = useQueryClient();
   const [selectedJob, setSelectedJob] = useState<GitLabJob | null>(null);

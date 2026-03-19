@@ -91,14 +91,14 @@ export default function Pipelines() {
   const api = useApi();
   const qc = useQueryClient();
   const { page, perPage, setPage } = usePagination(20);
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState('all');
   const [ref, setRef] = useState('');
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['project', id, 'pipelines', status, ref, page, perPage],
     queryFn: () =>
       api.pipelines.list(Number(id), {
-        status: status || undefined,
+        status: status === 'all' ? undefined : status,
         ref: ref || undefined,
         page,
         per_page: perPage,
@@ -136,13 +136,13 @@ export default function Pipelines() {
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
-        <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
+        <Select value={status} onValueChange={(v) => { if (v) { setStatus(v); setPage(1); } }}>
           <SelectTrigger className="w-40">
             <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="All status" />
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All status</SelectItem>
+            <SelectItem value="all">All status</SelectItem>
             <SelectItem value="running">Running</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="success">Success</SelectItem>
