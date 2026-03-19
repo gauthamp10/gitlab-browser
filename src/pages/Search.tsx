@@ -10,6 +10,7 @@ import EmptyState from '../components/common/EmptyState';
 import { useApi } from '../api';
 import { useAuthStore } from '../store/auth';
 import type { SearchScope } from '../api/search';
+import type { GitLabSearchResult } from '../types/gitlab';
 
 const SCOPES: Array<{ value: SearchScope; label: string; icon: React.ElementType }> = [
   { value: 'projects', label: 'Projects', icon: FolderOpen },
@@ -50,7 +51,7 @@ export default function Search() {
           order_by: 'last_activity_at',
         });
         return {
-          items: result.items.map((p) => ({
+          items: result.items.map((p): GitLabSearchResult => ({
             id: p.id,
             title: p.name_with_namespace,
             description: p.description ?? undefined,
