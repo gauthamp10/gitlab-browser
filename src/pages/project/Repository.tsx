@@ -3,7 +3,7 @@ import { Link, useOutletContext, useParams, useLocation } from 'react-router-dom
 import { useQuery } from '@tanstack/react-query';
 import {
   ChevronRight, GitBranch, GitCommit,
-  Download, Clock, ArrowLeft
+  Download, Clock, ArrowLeft, ChevronDown, Loader2,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Skeleton } from '../../components/ui/skeleton';
@@ -11,6 +11,9 @@ import {
   Select, SelectContent, SelectGroup, SelectItem, SelectLabel,
   SelectTrigger, SelectValue, SelectSeparator,
 } from '../../components/ui/select';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '../../components/ui/dropdown-menu';
 import TimeAgo from '../../components/common/TimeAgo';
 import EmptyState from '../../components/common/EmptyState';
 import ErrorMessage from '../../components/common/ErrorMessage';
@@ -92,6 +95,17 @@ export default function Repository() {
       ]
     : [];
 
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async (format: 'zip' | 'tar.gz') => {
+    if (!project) return;
+    setDownloading(true);
+    try {
+      await api.repository.downloadArchive(Number(id), ref, project.path, format);
+    } catch { /* ignore */ }
+    setDownloading(false);
+  };
+
   if (!project) return null;
 
   return (
@@ -150,15 +164,29 @@ export default function Repository() {
           ))}
         </div>
 
-        <Button variant="outline" size="sm" asChild>
-          <a
-            href={api.repository.getArchive(Number(id), ref)}
-            download
-          >
-            <Download className="h-4 w-4 mr-1" />
-            Download
-          </a>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" disabled={downloading}>
+              {downloading ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-1" />
+              )}
+              Download
+              <ChevronDown className="h-3.5 w-3.5 ml-1 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleDownload('zip')}>
+              <Download className="h-4 w-4 mr-2" />
+              ZIP archive
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleDownload('tar.gz')}>
+              <Download className="h-4 w-4 mr-2" />
+              tar.gz archive
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Last commit info */}

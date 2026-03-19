@@ -50,5 +50,25 @@ export function createRepositoryApi(client: GitLabApiClient) {
 
     getArchive: (projectId: number, ref: string, format: 'tar.gz' | 'zip' = 'tar.gz') =>
       `${client.base}/projects/${projectId}/repository/archive.${format}?ref=${encodeURIComponent(ref)}`,
+
+    downloadArchive: async (
+      projectId: number,
+      ref: string,
+      filename: string,
+      format: 'tar.gz' | 'zip' = 'zip'
+    ): Promise<void> => {
+      const blob = await client.fetchBlob(
+        `/projects/${projectId}/repository/archive.${format}`,
+        { ref }
+      );
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = `${filename}-${ref}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    },
   };
 }

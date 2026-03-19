@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Star, GitFork, Clock, Search, Lock, Unlock, Globe,
-  AlertCircle, SlidersHorizontal
+  AlertCircle, SlidersHorizontal, Plus
 } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { Input } from '../components/ui/input';
@@ -16,6 +16,7 @@ import {
 import Pagination from '../components/common/Pagination';
 import TimeAgo from '../components/common/TimeAgo';
 import EmptyState from '../components/common/EmptyState';
+import CreateProjectDialog from '../components/projects/CreateProjectDialog';
 import { useApi } from '../api';
 import { useSearch } from '../hooks/useSearch';
 import { usePagination } from '../hooks/usePagination';
@@ -108,6 +109,7 @@ export default function Projects() {
   const [orderBy, setOrderBy] = useState<string>('last_activity_at');
   const [visibility, setVisibility] = useState<string>('all');
   const [membership, setMembership] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['projects', 'list', debouncedQuery, page, perPage, orderBy, visibility, membership],
@@ -128,12 +130,13 @@ export default function Projects() {
     <div className="p-6 max-w-6xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Projects</h1>
-        <Button asChild>
-          <a href="https://gitlab.com/projects/new" target="_blank" rel="noopener noreferrer">
-            New Project
-          </a>
+        <Button onClick={() => setShowCreate(true)}>
+          <Plus className="h-4 w-4 mr-1.5" />
+          New Project
         </Button>
       </div>
+
+      <CreateProjectDialog open={showCreate} onClose={() => setShowCreate(false)} />
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">

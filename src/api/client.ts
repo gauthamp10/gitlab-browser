@@ -144,7 +144,16 @@ export function createApiClient(config: ApiConfig) {
     return res.text();
   }
 
-  return { request, requestPaged, requestText, base };
+  async function fetchBlob(path: string, params?: RequestParams): Promise<Blob> {
+    const url = buildUrl(base, path, params);
+    const res = await fetch(url, {
+      headers: { 'PRIVATE-TOKEN': config.token },
+    });
+    if (!res.ok) throw new ApiError(res.status, `HTTP ${res.status}`);
+    return res.blob();
+  }
+
+  return { request, requestPaged, requestText, fetchBlob, base };
 }
 
 export type GitLabApiClient = ReturnType<typeof createApiClient>;

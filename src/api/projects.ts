@@ -5,7 +5,19 @@ import type {
   GitLabTag,
   GitLabContributor,
   GitLabCommit,
+  GitLabNamespace,
 } from '../types/gitlab';
+
+export interface CreateProjectParams {
+  name: string;
+  path?: string;
+  namespace_id?: number;
+  description?: string;
+  visibility?: 'private' | 'internal' | 'public';
+  initialize_with_readme?: boolean;
+  default_branch?: string;
+  auto_devops_enabled?: boolean;
+}
 
 export interface ListProjectsParams {
   membership?: boolean;
@@ -71,6 +83,17 @@ export function createProjectsApi(client: GitLabApiClient) {
         `/projects/${id}/repository/contributors`,
         { params }
       ),
+
+    create: (params: CreateProjectParams) =>
+      client.request<GitLabProject>('/projects', {
+        method: 'POST',
+        body: JSON.stringify(params),
+      }),
+
+    listNamespaces: (search?: string) =>
+      client.requestPaged<GitLabNamespace>('/namespaces', {
+        params: search ? { search } : undefined,
+      }),
 
     compare: (id: number, from: string, to: string) =>
       client.request<{
