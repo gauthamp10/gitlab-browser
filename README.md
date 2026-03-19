@@ -147,12 +147,26 @@ https://YOUR_GITLAB/-/user_settings/personal_access_tokens?name=glab-browser&sco
 
 ## Security
 
-- Your token is stored **only in `localStorage`** in your own browser
-- It is **never sent** to any server other than your GitLab instance
-- All API calls go directly from your browser to the GitLab API
-- The Docker image runs nginx as a **non-root user**
-- Strict Content Security Policy headers are set by default
-- You can revoke your token at any time from GitLab's token settings page
+glab-browser is designed with a security-first approach to Personal Access Token handling and browser hardening.
+
+**Token protection**
+- PATs are encrypted at rest using **AES-GCM-256 (WebCrypto)** — `localStorage` never contains a plaintext token
+- The encryption key is stored only in `sessionStorage` and is gone when the browser session ends, so encrypted blobs are useless after a restart
+- Tokens are transmitted exclusively via the `PRIVATE-TOKEN` request header — they never appear in URLs, browser history, or server logs
+- All API calls go directly from your browser to your GitLab instance; no third-party server ever receives your token
+- Token revocation is instant — delete the token from GitLab's settings page and access is removed immediately
+
+**Browser hardening**
+- **Content Security Policy** — `script-src 'self'` (no `unsafe-inline`); `connect-src 'self' https:` (plaintext HTTP blocked); `object-src 'none'`; `base-uri 'self'`
+- **Strict-Transport-Security** — instructs browsers to enforce HTTPS for all future visits (1 year, `includeSubDomains`)
+- **Permissions-Policy** — camera, microphone, geolocation, payment, and USB access are all disabled
+- **X-Content-Type-Options: nosniff** — prevents MIME-type sniffing
+- **Referrer-Policy: strict-origin-when-cross-origin** — limits Referer header exposure
+
+**Infrastructure**
+- The Docker image runs nginx as a **non-root user** (`USER nginx`)
+- A warning is shown in the UI if you configure a GitLab host using `http://` instead of `https://`
+- PAT scope detection — write actions are automatically greyed out with a tooltip when your token lacks the required scope
 
 ---
 
@@ -213,6 +227,7 @@ src/
 ├── store/               # Zustand stores (auth, settings)
 ├── types/               # GitLab API TypeScript interfaces
 └── utils/
+    ├── crypto.ts        # WebCrypto AES-GCM encryption for localStorage
     ├── gitGraph.ts      # Lane-assignment algorithm for git graph SVG
     ├── format.ts        # Date, file size, number formatters
     └── ...

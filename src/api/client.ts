@@ -153,7 +153,7 @@ export function createApiClient(config: ApiConfig) {
     return res.blob();
   }
 
-  return { request, requestPaged, requestText, fetchBlob, base, token: config.token };
+  return { request, requestPaged, requestText, fetchBlob, base };
 }
 
 export type GitLabApiClient = ReturnType<typeof createApiClient>;

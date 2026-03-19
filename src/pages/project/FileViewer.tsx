@@ -110,7 +110,7 @@ export default function FileViewer() {
           <div className="border rounded-lg p-8 text-center">
             {['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext) ? (
               <img
-                src={`data:image/${ext};base64,${file.content}`}
+                src={`data:${({ svg: 'image/svg+xml', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp' } as Record<string, string>)[ext] ?? 'application/octet-stream'};base64,${file.content}`}
                 alt={filePath}
                 className="max-w-full max-h-[600px] mx-auto rounded-lg"
               />

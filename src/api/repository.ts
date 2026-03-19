@@ -51,6 +51,28 @@ export function createRepositoryApi(client: GitLabApiClient) {
     getArchive: (projectId: number, ref: string, format: 'tar.gz' | 'zip' = 'tar.gz') =>
       `${client.base}/projects/${projectId}/repository/archive.${format}?ref=${encodeURIComponent(ref)}`,
 
+    // Token is sent in the PRIVATE-TOKEN header (inside fetchBlob), never in
+    // the URL, so it cannot appear in browser history or server access logs.
+    downloadArchive: async (
+      projectId: number,
+      ref: string,
+      filename: string,
+      format: 'tar.gz' | 'zip' = 'zip'
+    ): Promise<void> => {
+      const blob = await client.fetchBlob(
+        `/projects/${projectId}/repository/archive.${format}`,
+        { ref }
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${filename}-${ref}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },
+
     createBranch: (projectId: number, branch: string, ref: string) =>
       client.request<GitLabBranch>(`/projects/${projectId}/repository/branches`, {
         method: 'POST',
@@ -63,23 +85,5 @@ export function createRepositoryApi(client: GitLabApiClient) {
         { method: 'DELETE' }
       ),
 
-    // Uses private_token query param so the browser handles the download natively,
-    // avoiding CORS issues with GitLab's redirect to object storage.
-    downloadArchive: (
-      projectId: number,
-      ref: string,
-      filename: string,
-      format: 'tar.gz' | 'zip' = 'zip'
-    ): void => {
-      const url =
-        `${client.base}/projects/${projectId}/repository/archive.${format}` +
-        `?ref=${encodeURIComponent(ref)}&private_token=${encodeURIComponent(client.token)}`;
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${filename}-${ref}.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    },
   };
 }
