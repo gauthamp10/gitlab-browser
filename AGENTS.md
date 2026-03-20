@@ -190,18 +190,173 @@ All checks must be green before merging. Use `[skip ci]` in commit message only 
 
 ---
 
-## Development history summary
+## Full development history
 
-Key decisions and fixes made during development (in order):
+### Iteration 1 — Initial scaffold and Docker setup
+- Scaffolded with Vite 5 + React 18 + TypeScript
+- Set up shadcn/ui, Tailwind CSS, React Router v6, TanStack Query v5, Zustand v5
+- Could not install Node.js locally (sandbox restriction) — switched entirely to Docker
+- Dockerfile: multi-stage build (`node:20-alpine` builder → `nginx:alpine` runner)
+- `docker-compose.yml` with port 3000 mapping
+- Core API client (`src/api/client.ts`) with typed `fetch` wrapper, `ApiError`, pagination support
+- API modules created for: projects, issues, merge requests, pipelines, repository, users, groups, search, todos, wiki
+- Auth store (Zustand) with `localStorage` persistence and multi-instance support
+- All GitLab types defined in `src/types/gitlab.ts`
 
-- Scaffolded with Vite + React + TypeScript, containerised with Docker multi-stage build
-- Fixed blank repository page — caused by incorrect Radix UI `Select` usage and fragile path extraction via `useParams`
-- Implemented in-app MR creation, project creation, branch creation — all were previously redirecting to GitLab
-- File downloads use `fetchBlob()` + `URL.createObjectURL()` — never embed token in URLs
-- Pipeline blank page fixed — `SelectItem` had `value=""` which broke Radix state
-- Git graph implemented as custom SVG algorithm in `src/utils/gitGraph.ts`
-- Full security audit: WebCrypto PAT encryption, CSP headers, ANSI log sanitisation, nginx non-root hardening, `safeExternalHref` utility
-- CodeQL taint fixes in `Login.tsx`: use `err.status` (number) not `err.message` (string) for error display; use `new URL(host).origin` not raw `host` for href construction
-- Guest mode: `token === ''` (not null) passes through `PrivateRoute`; `ApiProvider` creates client when `token !== null`; search falls back to `/projects?search=...&visibility=public` for unauthenticated access
-- 117 Vitest tests added across utils, API client, store, and components
-- GitHub Actions: `ci.yml`, `security.yml`, `codeql.yml`, `release.yml`
+### Iteration 2 — Core pages and navigation
+- Built all route-level pages: Dashboard, Projects, Groups, Search, Profile, Todos
+- Built per-project pages: Repository browser, Issues, MRs, Pipelines, Commits, Compare, Overview, Settings, Wiki, Insights
+- `AppLayout` with Sidebar and Topbar
+- `ProjectLayout` with per-project tab navigation
+- `PrivateRoute` guard redirecting unauthenticated users to `/login`
+- Contribution heatmap on Dashboard
+- Shiki v1 syntax highlighting (lazy-loaded per language) in `FileViewer`
+- Custom diff renderer in `DiffViewer`
+- PAT scope detection via `useTokenPermissions` hook
+- `PermGate` component to grey out features the token lacks permission for (instead of hiding them)
+
+### Iteration 3 — Bug fixes (blank pages, downloads, redirects)
+**Problem**: Repository page loaded briefly then went blank on refresh.
+**Fix**: Corrected Radix UI `Select` usage (`SelectGroup`/`SelectLabel`). Used `useParams()['*']` for robust wildcard path extraction. Added error boundary in `ProjectLayout`.
+
+**Problem**: Download source code was not working.
+**Fix**: Implemented `fetchBlob()` method in API client. Used `URL.createObjectURL()` for downloads. Earlier attempt embedded token in URL query string — this was a vulnerability and was reverted.
+
+**Problem**: Creating new project and merge requests redirected to GitLab.
+**Fix**: Implemented `projects.create` API method and `CreateProjectDialog` component. Implemented `CreateMRDialog` component for in-app MR creation.
+
+**Problem**: Pipeline view showed blank page.
+**Fix**: `<SelectItem value="">` caused Radix state to break — changed to `value="all"`. Removed unused destructuring in `PipelineDetail`.
+
+### Iteration 4 — Feature additions (Round 1)
+- Removed Issues, Wiki, Overview, To-do tabs from navigation (later Issues was re-added)
+- Set Repository as default project tab
+- Made recent activity and contribution map on Dashboard clickable/navigatable
+- Fixed empty Recent Projects section on Dashboard
+- Added ability to create branches from the UI (`CreateBranchDialog`)
+- MR listing shows both open and closed MRs (status filter)
+- Added Repository Settings page (`src/pages/project/Settings.tsx`)
+
+### Iteration 5 — Git graph
+- Implemented custom SVG-based git graph algorithm in `src/utils/gitGraph.ts`
+- Renders branch lanes, merge lines, commit nodes with colour-coded branches
+- Accessible from the Commits page of any project
+- No external graph library — fully custom to avoid large dependencies
+
+### Iteration 6 — Docker and DigitalOcean deployment fixes
+**Problem**: DigitalOcean App Platform (Kaniko builder) failed: `touch: /var/run/nginx.pid: No such file or directory`
+**Fix (initial)**: Added `mkdir -p /var/run` in Dockerfile.
+**Fix (final, during security hardening)**: Moved nginx pid to `/tmp/nginx.pid` in `nginx.conf` — making the `/var/run` workaround unnecessary.
+
+**Problem**: `npm ci` failed in Docker — no `package-lock.json` committed.
+**Fix**: Changed Dockerfile to `npm install --legacy-peer-deps`.
+
+**Problem**: TypeScript errors (`TS2322`) on `asChild` prop and `RequestParams` type.
+**Fix**: Added `@radix-ui/react-slot`, implemented `asChild` support on `Button`. Broadened `RequestParams` type.
+
+### Iteration 7 — Security audit and hardening
+Full audit was performed. Issues found and fixed:
+
+| Severity | Issue | Fix |
+|---|---|---|
+| Critical | PAT stored as plaintext in `localStorage` | WebCrypto AES-GCM-256 encryption (`src/utils/crypto.ts`), session key in `sessionStorage` |
+| Critical | File download embedded token in URL query string | Reverted to `fetchBlob()` + `URL.createObjectURL()` |
+| High | No Content Security Policy | Added strict CSP in `nginx-vhost.conf`: `script-src 'self'`, `connect-src 'self' https:`, `object-src 'none'` |
+| High | CI job logs rendered raw HTML (ANSI parser) | Replaced custom parser with `ansi-to-html` library (`escapeXML: true`) |
+| High | nginx running as root | Added non-root `nginx` user, moved pid/temp to `/tmp` in `nginx.conf` |
+| High | `javascript:` URI injectable into href via host input | Added `safeExternalHref()` utility, then later replaced with `new URL(host).origin` approach |
+| High | `err.message` from API rendered into DOM | Replaced with hardcoded strings keyed on numeric `err.status` |
+| Medium | No HSTS, X-Frame-Options, Referrer-Policy headers | Added all to `nginx-vhost.conf` |
+| Medium | Dev server bound to `0.0.0.0` | Changed to `localhost` in `vite.config.ts` |
+| Medium | Insecure GitLab host not warned | Added HTTP warning banner on Login page |
+| Medium | SVG MIME type wrong (`data:image/svg`) | Fixed to `data:image/svg+xml` |
+| Medium | `ref` param not encoded in raw URL | Added `encodeURIComponent` |
+| Low | `token` exposed on API client object | Removed from returned object |
+
+Created `SECURITY.md` documenting all controls. Updated README to say "security enforced" rather than listing issues.
+
+### Iteration 8 — Testing (117 tests)
+Added full Vitest test suite:
+- `vitest.config.ts`, `src/test/setup.ts`
+- `src/__tests__/utils/crypto.test.ts` — 16 tests for WebCrypto encrypt/decrypt/storage
+- `src/__tests__/utils/url.test.ts` — 33 tests for URL utilities
+- `src/__tests__/security/safeHref.test.ts` — 15 tests for `safeExternalHref`
+- `src/__tests__/api/client.test.ts` — 19 tests for API client (headers, errors, pagination)
+- `src/__tests__/store/auth.test.ts` — 12 tests for Zustand auth store
+- `src/__tests__/components/JobLog.test.tsx` — 10 tests (ANSI rendering, XSS safety)
+- `src/__tests__/components/Login.test.tsx` — 12 tests (render, insecure warning, submit, errors)
+
+Fixes needed during test setup:
+- Installed `@testing-library/dom` (was missing)
+- Fixed `getFileExtension('.gitignore')` expectation (`'gitignore'` not `''`)
+- Removed duplicate `logDiv` variable in `JobLog.test.tsx`
+- Replaced unsupported CSS selector `script[type!="text/javascript"]` with `querySelectorAll('script').length`
+- Wrapped `Login` in `QueryClientProvider` to support `useQueryClient()`
+- Removed `skype`/`linkedin`/`twitter` from `makeUser` helper (not in `GitLabUser` type)
+- Fixed `Uint8Array<ArrayBufferLike>` TypeScript error in `crypto.ts` by using explicit `new ArrayBuffer()`
+
+### Iteration 9 — GitHub Actions CI/CD
+Created `.github/workflows/`:
+- `ci.yml` — TypeScript check (`tsc --noEmit`), ESLint, Vitest
+- `security.yml` — `npm audit`, gitleaks secret scan, GitHub dependency review
+- `codeql.yml` — CodeQL static analysis for JS/TS
+- `release.yml` — Docker image build and push on semver tag
+
+Fixed ESLint setup:
+- Installed `eslint`, `@eslint/js`, `typescript-eslint`, `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh`
+- Created `eslint.config.js` (ESLint 9 flat config format)
+- Disabled React Compiler rules (`purity`, `refs`, `set-state-in-effect`) in `eslint.config.js` as they are too strict without the React Compiler
+- Fixed `no-useless-escape` in `CreateProjectDialog.tsx`
+- Fixed `@typescript-eslint/no-unused-expressions` in `Commits.tsx`
+
+### Iteration 10 — File upload and inline editor
+- `UploadFileDialog` component (`src/components/repository/UploadFileDialog.tsx`): drag-and-drop or file picker, base64 encoding, commit message, branch selection
+- `InlineEditor` component (`src/components/repository/InlineEditor.tsx`): textarea editor, commit message, branch selection, save/cancel
+- Added `createFile` (POST) and `updateFile` (PUT) to `src/api/repository.ts`
+- Integrated both into `Repository.tsx` (upload button) and `FileViewer.tsx` (edit button, gated by `canWriteRepo`)
+
+### Iteration 11 — Guest mode (public repo access without login)
+**Goal**: Allow browsing public GitLab repos without requiring a PAT.
+
+Changes:
+- `auth.ts`: added `browseAsGuest(host)` action — sets `token: ''`
+- `auth.ts`: renamed `localStorage` key from `glab-browser-auth` to `gitlab-browser-auth`
+- `PrivateRoute.tsx`: changed `if (!token)` to `if (token === null)` so `token === ''` passes through
+- `api/index.ts`: changed `if (!token || !host)` to `if (token === null || !host)` so guest mode creates an API client
+- `api/client.ts`: `authHeaders()` function omits `PRIVATE-TOKEN` header when token is falsy
+- `Login.tsx`: added "Browse public repositories" card with host input
+- `AppLayout.tsx`: amber banner shown in guest mode with Sign in link
+- `Topbar.tsx`: shows "Sign in" button instead of avatar in guest mode
+- `Dashboard.tsx`: `starredProjects` query gated with `enabled: !!user`; contribution heatmap replaced with sign-in prompt in guest mode
+- `Sidebar.tsx`: `queryClient.clear()` called on logout and instance switch to prevent cache bleed
+
+**Bug**: After signing out and signing in as guest, previous user's data was still shown.
+**Fix**: Added `queryClient.clear()` to `handleBrowseAsGuest` in `Login.tsx` and `handleLogout` in `Sidebar.tsx`.
+
+**Bug**: Guest mode search returned blank (global `/search` requires auth).
+**Fix**: In `Search.tsx`, guest mode projects scope uses `GET /projects?search=...&visibility=public`. Other scopes disabled with lock icon. TypeScript error (`TS2339`) on union type fixed by annotating mapped items as `: GitLabSearchResult`.
+
+### Iteration 12 — Login page animation
+- Added `useCursorBlob` hook in `Login.tsx`
+- Two blurred gradient blobs follow the cursor using `requestAnimationFrame` + `lerp`
+- Primary blob: 8% lerp per frame; secondary blob: 40% of primary movement for depth
+- Uses direct DOM style manipulation (not React state) for performance
+- Cleaned up with `cancelAnimationFrame` and `removeEventListener` on unmount
+
+### Iteration 13 — CodeQL security fixes (Login.tsx — multiple iterations)
+
+**Round 1**: `safeExternalHref()` added to validate `href` and `img src` attributes.
+
+**Round 2**: Error message sanitisation — `err.message.replace(/<[^>]*>/g, '')` — but CodeQL flagged that `/<[^>]*>/g` doesn't match `<script` without closing `>`.
+
+**Round 3 (final)**: Complete elimination of taint paths:
+1. `createTokenHref` — replaced `safeExternalHref(host + ...)` with `new URL(normalizeHost(host)).origin` inside `useMemo`. URL-parser output is not tainted.
+2. Error display — replaced all `err.message` usage with hardcoded strings keyed on `err.status` (a number). `ApiError` is checked first; `TypeError` catches network failures; everything else gets a generic message.
+3. Avatar `src` — wrapped `instance.user.avatar_url` with `safeExternalHref()`.
+
+### Iteration 14 — README and docs
+- README rewritten for public release: self-hosting instructions, Docker quickstart, feature list, screenshots section (6 screenshots), security section ("security enforced"), live demo badge, CI/CodeQL badges
+- Renamed project from "glab-browser" to "gitlab-browser" throughout
+- Added live demo URL: `https://glabrowser-bchpz.ondigitalocean.app/`
+- Created `SECURITY.md` documenting all security controls
+- Created `AGENTS.md` (this file) for AI agent handoff
