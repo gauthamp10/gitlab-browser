@@ -190,9 +190,18 @@ All checks must be green before merging. Use `[skip ci]` in commit message only 
 
 ---
 
-## Past conversation transcript
+## Development history summary
 
-The full development history (architecture decisions, bug fixes, security audit) is in the agent transcript:
-`/home/bulo/.cursor/projects/home-bulo-glab-browser/agent-transcripts/549ddef1-c587-4c83-87bb-ec5855c1082e/`
+Key decisions and fixes made during development (in order):
 
-Search it by keyword (filename, error text, feature name) rather than reading linearly — it is large.
+- Scaffolded with Vite + React + TypeScript, containerised with Docker multi-stage build
+- Fixed blank repository page — caused by incorrect Radix UI `Select` usage and fragile path extraction via `useParams`
+- Implemented in-app MR creation, project creation, branch creation — all were previously redirecting to GitLab
+- File downloads use `fetchBlob()` + `URL.createObjectURL()` — never embed token in URLs
+- Pipeline blank page fixed — `SelectItem` had `value=""` which broke Radix state
+- Git graph implemented as custom SVG algorithm in `src/utils/gitGraph.ts`
+- Full security audit: WebCrypto PAT encryption, CSP headers, ANSI log sanitisation, nginx non-root hardening, `safeExternalHref` utility
+- CodeQL taint fixes in `Login.tsx`: use `err.status` (number) not `err.message` (string) for error display; use `new URL(host).origin` not raw `host` for href construction
+- Guest mode: `token === ''` (not null) passes through `PrivateRoute`; `ApiProvider` creates client when `token !== null`; search falls back to `/projects?search=...&visibility=public` for unauthenticated access
+- 117 Vitest tests added across utils, API client, store, and components
+- GitHub Actions: `ci.yml`, `security.yml`, `codeql.yml`, `release.yml`
