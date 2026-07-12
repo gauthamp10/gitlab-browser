@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useOutletContext, useParams, useLocation, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronRight, ArrowLeft, Pencil } from 'lucide-react';
+import { ChevronRight, ArrowLeft, Pencil, FileText } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Skeleton } from '../../components/ui/skeleton';
 import FileViewerComponent from '../../components/code/FileViewer';
+import MarkdownRenderer from '../../components/common/MarkdownRenderer';
 import InlineEditor from '../../components/repository/InlineEditor';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import PermGate from '../../components/common/PermGate';
@@ -60,11 +61,12 @@ export default function FileViewer() {
     }
   })();
 
-  // Detect if binary
   const isBinary = file && (
     file.encoding !== 'base64' ||
     (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'ico', 'bmp'].includes(ext))
   );
+
+  const isMarkdown = ext === 'md' || ext === 'mdx' || ext === 'markdown' || ext === 'mdown';
 
   const rawUrl = file
     ? `${api.client.base}/projects/${id}/repository/files/${encodeURIComponent(filePath)}/raw?ref=${ref}`
@@ -192,6 +194,27 @@ export default function FileViewer() {
             onSave={handleSave}
             onCancel={() => setIsEditing(false)}
           />
+        ) : isMarkdown ? (
+          <div className="border rounded-lg overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2 bg-muted/50 border-b">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <FileText className="h-4 w-4" />
+                <span className="font-mono">{file.file_name}</span>
+                <span>·</span>
+                <span>{(new TextEncoder().encode(content).length / 1024).toFixed(1)} KB</span>
+              </div>
+              {rawUrl && (
+                <Button variant="ghost" size="sm" asChild className="h-7 text-xs">
+                  <a href={rawUrl} target="_blank" rel="noopener noreferrer">
+                    Raw
+                  </a>
+                </Button>
+              )}
+            </div>
+            <div className="p-6">
+              <MarkdownRenderer content={content} />
+            </div>
+          </div>
         ) : (
           <FileViewerComponent
             content={content}
