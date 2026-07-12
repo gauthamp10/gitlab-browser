@@ -212,7 +212,7 @@ GitLab Browser is designed with a security-first approach to Personal Access Tok
 |-----------|---------|---------|
 | React | 18 | UI framework |
 | TypeScript | 5 | Type safety |
-| Vite | 5 | Build tool & dev server |
+| Vite | 8 | Build tool & dev server |
 | React Router | v6 | Client-side routing |
 | TanStack Query | v5 | Data fetching & caching |
 | Zustand | v4 | State management (auth, settings) |

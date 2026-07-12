@@ -18,7 +18,7 @@ A full-featured GitLab frontend web app that authenticates via **Personal Access
 
 | Layer | Choice |
 |---|---|
-| Framework | React 18 + TypeScript + Vite 5 |
+| Framework | React 18 + TypeScript + Vite 8 |
 | Routing | React Router v6 |
 | Data fetching | TanStack Query v5 |
 | State | Zustand v5 with persistence |
