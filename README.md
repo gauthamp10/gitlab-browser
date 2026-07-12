@@ -276,3 +276,4 @@ Please follow the existing code style (TypeScript strict, Tailwind for styling, 
 ## License
 
 [MIT](LICENSE) © 2025 — free to use, self-host, and modify.
+
