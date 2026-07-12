@@ -50,18 +50,18 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.3",
+    "@vitejs/plugin-react": "^5.2.0",
     "@vitest/coverage-v8": "^4.1.0",
     "autoprefixer": "^10.4.20",
     "eslint": "^10.0.3",
-    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-hooks": "^7.1.0",
     "eslint-plugin-react-refresh": "^0.5.2",
     "jsdom": "^29.0.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.15",
     "typescript": "^5.6.3",
     "typescript-eslint": "^8.57.1",
-    "vite": "^5.4.11",
+    "vite": "^8.1.4",
     "vitest": "^4.1.0"
   }
 }
