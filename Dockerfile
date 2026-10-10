@@ -4,8 +4,8 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Install dependencies first (layer cached separately from source)
-COPY package.json ./
-RUN npm install --legacy-peer-deps
+COPY package.json package-lock.json ./
+RUN npm ci --legacy-peer-deps
 
 # Copy source and build
 COPY . .

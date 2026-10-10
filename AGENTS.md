@@ -19,10 +19,10 @@ A full-featured GitLab frontend web app that authenticates via **Personal Access
 | Layer | Choice |
 |---|---|
 | Framework | React 18 + TypeScript + Vite 8 |
-| Routing | React Router v6 |
+| Routing | React Router v7 |
 | Data fetching | TanStack Query v5 |
 | State | Zustand v5 with persistence |
-| UI | shadcn/ui (Radix primitives) + Tailwind CSS v3 |
+| UI | shadcn/ui (Radix primitives) + Tailwind CSS v4 |
 | Syntax highlighting | Shiki v1 (lazy-loaded per language) |
 | Icons | Lucide React |
 | Dates | date-fns v3 |
@@ -175,7 +175,7 @@ All checks must be green before merging. Use `[skip ci]` in commit message only 
 1. **`nginx.conf` user directive warning** — nginx logs a warning about the `user` directive being ignored (non-root). This is harmless and expected.
 2. **`node_modules/.bin/vitest` spawn error** — vitest cannot run directly on this host (no Node.js installed locally). Always use Docker for tests.
 3. **Chunk size warnings** — Vite warns about large chunks (Shiki language packs). These are expected and not errors. Consider code-splitting if bundle size becomes a concern.
-4. **`package-lock.json`** — Dockerfile uses `npm install --legacy-peer-deps` (not `npm ci`) because there is no lock file committed.
+4. **`package-lock.json`** — the Docker build copies the lockfile and runs `npm ci --legacy-peer-deps`, so the image matches the audited dependency tree.
 
 ---
 
@@ -185,7 +185,7 @@ All checks must be green before merging. Use `[skip ci]` in commit message only 
 - [ ] Code-split Shiki language packs to reduce initial bundle size
 - [ ] Notifications / activity feed for authenticated users
 - [ ] Dark/light theme toggle persistence per-instance
-- [ ] Commit `package-lock.json` so `npm ci` can be used in CI for reproducible builds
+- [x] Commit `package-lock.json` so `npm ci` can be used in CI for reproducible builds
 - [ ] Merge `feature/base` into `main` once stable
 
 ---
