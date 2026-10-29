@@ -15,8 +15,13 @@ export interface ListGroupsParams {
 
 export function createGroupsApi(client: GitLabApiClient) {
   return {
+    // Always scoped to groups the token's user is a member of (min_access_level
+    // 10 = Guest). Without it GitLab also returns every public group (and, for
+    // admins, every group on the instance).
     list: (params?: ListGroupsParams) =>
-      client.requestPaged<GitLabGroup>('/groups', { params: params as Record<string, string | number | boolean | undefined | null> }),
+      client.requestPaged<GitLabGroup>('/groups', {
+        params: { ...params, min_access_level: params?.min_access_level ?? 10 } as Record<string, string | number | boolean | undefined | null>,
+      }),
 
     get: (id: number | string) =>
       client.request<GitLabGroup>(`/groups/${encodeURIComponent(String(id))}`, {

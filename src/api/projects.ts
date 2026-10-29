@@ -1,4 +1,4 @@
-import type { GitLabApiClient } from './client';
+import type { GitLabApiClient, PagedResult } from './client';
 import type {
   GitLabProject,
   GitLabBranch,
@@ -21,6 +21,8 @@ export interface CreateProjectParams {
 
 export interface ListProjectsParams {
   membership?: boolean;
+  min_access_level?: number;
+  simple?: boolean;
   owned?: boolean;
   starred?: boolean;
   search?: string;
@@ -36,8 +38,26 @@ export interface ListProjectsParams {
 
 export function createProjectsApi(client: GitLabApiClient) {
   return {
+    // Always scoped to projects the token's user is a member of (directly or
+    // through a group) — public projects outside those memberships are never listed.
     list: (params?: ListProjectsParams) =>
-      client.requestPaged<GitLabProject>('/projects', { params: params as Record<string, string | number | boolean | undefined | null> }),
+      client.requestPaged<GitLabProject>('/projects', {
+        params: { ...params, membership: true } as Record<string, string | number | boolean | undefined | null>,
+      }),
+
+    /** IDs of every project the token's user is a member of. */
+    listMemberIds: async () => {
+      const ids = new Set<number>();
+      let page: number | null = 1;
+      while (page) {
+        const result: PagedResult<{ id: number }> = await client.requestPaged<{ id: number }>('/projects', {
+          params: { membership: true, simple: true, per_page: 100, page },
+        });
+        result.items.forEach((p) => ids.add(p.id));
+        page = result.pagination.nextPage;
+      }
+      return ids;
+    },
 
     get: (id: number | string) =>
       client.request<GitLabProject>(`/projects/${encodeURIComponent(String(id))}`, {

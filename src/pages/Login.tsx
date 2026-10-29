@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Eye, EyeOff, ExternalLink, Loader2, AlertCircle, ShieldAlert, Globe } from 'lucide-react';
+import { Eye, EyeOff, ExternalLink, Loader2, AlertCircle, ShieldAlert } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -67,24 +67,13 @@ export default function Login() {
   const isAddInstance = searchParams.get('add') === '1';
   const { el1: blob1, el2: blob2 } = useCursorBlob();
 
-  const { setAuth, setUser, browseAsGuest, instances } = useAuthStore();
+  const { setAuth, setUser, instances } = useAuthStore();
 
   const [host, setHost] = useState('https://gitlab.com');
   const [token, setToken] = useState('');
   const [showToken, setShowToken] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const [guestHost, setGuestHost] = useState('https://gitlab.com');
-
-  const handleBrowseAsGuest = () => {
-    const normalizedHost = normalizeHost(guestHost);
-    browseAsGuest(normalizedHost);
-    // Clear the cache so a previously authenticated user's data is not
-    // shown while browsing as an unauthenticated guest.
-    queryClient.clear();
-    navigate('/dashboard');
-  };
 
   // Build the token-creation link from the parsed URL origin only.
   // Using url.origin (a property of the URL object, not the raw user string)
@@ -357,51 +346,6 @@ export default function Login() {
           </CardContent>
         </Card>
 
-        {/* Guest / public access */}
-        {!isAddInstance && (
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">or</span>
-            </div>
-          </div>
-        )}
-
-        {!isAddInstance && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Globe className="h-4 w-4 text-primary" />
-                Browse public repositories
-              </CardTitle>
-              <CardDescription>
-                Explore public projects on GitLab without a token. Write actions and private repos will be unavailable.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 pb-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="guest-host" className="text-xs">GitLab instance</Label>
-                <Input
-                  id="guest-host"
-                  type="url"
-                  placeholder="https://gitlab.com"
-                  value={guestHost}
-                  onChange={(e) => setGuestHost(e.target.value)}
-                />
-              </div>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleBrowseAsGuest}
-              >
-                <Globe className="h-4 w-4 mr-2" />
-                Browse without signing in
-              </Button>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   );

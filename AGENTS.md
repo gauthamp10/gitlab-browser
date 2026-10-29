@@ -59,15 +59,14 @@ src/
 
 ## Authentication model
 
-- `token === null` → not logged in → redirect to `/login`
-- `token === ''` → **guest mode** (unauthenticated, public repos only)
-- `token === 'glpat-...'` → fully authenticated
+- `!token` (`null` or `''`) → not logged in → redirect to `/login`
+- `token === 'glpat-...'` → authenticated
+
+There is no guest/unauthenticated mode (removed in Iteration 15).
 
 PATs are encrypted in `localStorage` using **WebCrypto AES-GCM-256** (`src/utils/crypto.ts`). The session key lives in `sessionStorage` and is regenerated each browser session.
 
-The `ApiProvider` (`src/api/index.ts`) creates the API client when `token !== null`. When `token === ''` the client omits the `PRIVATE-TOKEN` header, enabling public API access.
-
-`PrivateRoute` (`src/components/PrivateRoute.tsx`) checks `token === null` (not `!token`) to allow guest mode through.
+The `ApiProvider` (`src/api/index.ts`) only creates the API client when a token is set. `PrivateRoute` (`src/components/PrivateRoute.tsx`) redirects to `/login` when `!token`.
 
 ---
 
@@ -108,12 +107,15 @@ Security implementation details: `SECURITY.md`
 
 ---
 
-## Guest mode specifics
+## Membership-only scoping
 
-- `browseAsGuest(host)` in auth store sets `token: ''`
-- Dashboard: `starredProjects` query is gated with `enabled: !!user`
-- Search page: Projects scope uses `GET /projects?search=...&visibility=public` (not `/search` which requires auth). Other scopes (issues, MRs, commits, blobs) are disabled with a lock icon and sign-in prompt.
-- Sidebar/Login: `queryClient.clear()` is called on logout AND on guest login to prevent cache bleed between sessions.
+The browser only lists groups/projects the token's user is a member of. Public projects outside those memberships are never listed.
+
+- `api.projects.list()` always forces `membership: true`.
+- `api.groups.list()` defaults `min_access_level: 10` (Guest) — without it GitLab also returns all public groups (or every group for admins).
+- Search: Projects scope uses `api.projects.list({ search })`. Other scopes call global `/search` and filter results to `api.projects.listMemberIds()`.
+- Do not add listing calls that bypass these (e.g. raw `/projects` without `membership`).
+- Sidebar: `queryClient.clear()` is called on logout and instance switch to prevent cache bleed between sessions.
 
 ---
 
@@ -129,7 +131,7 @@ docker run --rm -v $(pwd):/app -w /app node:20-alpine \
   sh -c "node_modules/.bin/tsc --noEmit && node_modules/.bin/vite build"
 ```
 
-**117 tests** across 7 test files. Always run tests before pushing. All must pass.
+**130 tests** across 8 test files. Always run tests before pushing. All must pass.
 
 Test files:
 - `src/__tests__/utils/url.test.ts` — 33 tests
@@ -139,6 +141,7 @@ Test files:
 - `src/__tests__/store/auth.test.ts` — 12 tests
 - `src/__tests__/components/JobLog.test.tsx` — 10 tests
 - `src/__tests__/components/Login.test.tsx` — 12 tests
+- `src/__tests__/utils/pipelineStages.test.ts` — 13 tests
 
 ---
 
@@ -161,7 +164,7 @@ Workflows in `.github/workflows/`:
 
 | File | What it does |
 |---|---|
-| `ci.yml` | TypeScript check, ESLint, Vitest (117 tests) |
+| `ci.yml` | TypeScript check, ESLint, Vitest (130 tests) |
 | `security.yml` | `npm audit`, gitleaks secret scan, dependency review |
 | `codeql.yml` | CodeQL static analysis (JavaScript/TypeScript) |
 | `release.yml` | Builds and pushes Docker image on tag |
@@ -353,6 +356,19 @@ Changes:
 1. `createTokenHref` — replaced `safeExternalHref(host + ...)` with `new URL(normalizeHost(host)).origin` inside `useMemo`. URL-parser output is not tainted.
 2. Error display — replaced all `err.message` usage with hardcoded strings keyed on `err.status` (a number). `ApiError` is checked first; `TypeError` catches network failures; everything else gets a generic message.
 3. Avatar `src` — wrapped `instance.user.avatar_url` with `safeExternalHref()`.
+
+### Iteration 16 — GitLab-style pipelines, jobs and downstream pipelines
+- `api.pipelines.getAllJobs` / `getAllBridges` (paged, capped at 10 pages) and `listProjectJobs`
+- `src/utils/pipelineStages.ts`: groups jobs + trigger jobs (bridges) into stages ordered by first job id (keeps custom `.gitlab-ci.yml` stage order), composite stage status
+- `usePipelineStages` hook polls only while the pipeline is active
+- Pipelines list: GitLab columns (Status / Pipeline / Created by / Stages); `MiniPipelineGraph` shows a stage icon per stage with a job dropdown, plus downstream pipeline icons
+- Pipeline detail: tabs Pipeline / Jobs / Failed jobs / Downstream; `PipelineGraph` renders stage columns and a Downstream column whose cards expand inline (recursive) to show multi-project or child pipelines; `?job=<id>` deep-links the job log
+- Pipelines page has a project-wide Jobs tab (`?tab=jobs`) using `JobsTable`; job run/retry/cancel buttons are wired up
+
+### Iteration 15 — Membership-only scoping, guest mode removed
+- Projects, Groups, Dashboard and Search only show groups/projects the token's user is a member of
+- Removed the "Member projects" toggle on the Projects page (always on)
+- Removed guest mode: `browseAsGuest`, Login "Browse public repositories" card, guest banner and Topbar sign-in button
 
 ### Iteration 14 — README and docs
 - README rewritten for public release: self-hosting instructions, Docker quickstart, feature list, screenshots section (6 screenshots), security section ("security enforced"), live demo badge, CI/CodeQL badges

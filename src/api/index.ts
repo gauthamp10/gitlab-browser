@@ -37,10 +37,8 @@ export function ApiProvider({ children }: { children: ReactNode }) {
   const { token, host } = useAuthStore();
 
   const api = useMemo(() => {
-    // token === null means "not set up yet" → no API client
-    // token === ''    means guest mode → create client without a PAT (public access)
-    // token === 'glpat-...' means authenticated → create client with PAT
-    if (token === null || !host) return null;
+    // A PAT is always required — there is no unauthenticated access.
+    if (!token || !host) return null;
     return createAllApis(host, token);
   }, [token, host]);
 
