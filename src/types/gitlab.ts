@@ -185,12 +185,53 @@ export interface GitLabPipeline {
   duration: number | null;
   queued_duration: number | null;
   web_url: string;
+  name?: string | null;
   user?: GitLabUser;
   detailed_status?: {
     label: string;
     icon: string;
     favicon: string;
   };
+}
+
+/** Pipeline created by a trigger (bridge) job — in another project or a child pipeline. */
+export interface GitLabDownstreamPipeline {
+  id: number;
+  iid?: number;
+  project_id: number;
+  sha: string;
+  ref: string;
+  status: PipelineStatus;
+  source?: string;
+  created_at: string;
+  updated_at: string;
+  web_url: string;
+}
+
+/** A trigger job (`trigger:` keyword) — returned by the pipeline bridges API. */
+export interface GitLabBridge {
+  id: number;
+  name: string;
+  stage: string;
+  status: PipelineStatus;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  duration: number | null;
+  queued_duration: number | null;
+  web_url: string;
+  allow_failure: boolean;
+  ref: string;
+  user?: GitLabUser;
+  pipeline: {
+    id: number;
+    project_id: number;
+    ref: string;
+    sha: string;
+    status: PipelineStatus;
+    web_url: string;
+  };
+  downstream_pipeline: GitLabDownstreamPipeline | null;
 }
 
 export interface GitLabJob {
@@ -227,6 +268,8 @@ export interface GitLabJob {
   tag: boolean;
   ref: string;
   commit: GitLabCommit;
+  user?: GitLabUser;
+  coverage?: number | null;
 }
 
 export interface GitLabCommit {

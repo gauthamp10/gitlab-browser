@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AnsiToHtml from 'ansi-to-html';
-import { Download } from 'lucide-react';
+import { Check, Copy, Download } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '../../utils/cn';
+import { copyText, toPlainLog } from '../../utils/jobLog';
 import type { PipelineStatus } from '../../types/gitlab';
 
 interface JobLogProps {
@@ -44,6 +45,7 @@ export default function JobLog({ projectId, jobId, status, fetchLog }: JobLogPro
   const [log, setLog] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const logHtml = useMemo(() => (log ? ansiConverter.toHtml(log) : ''), [log]);
@@ -96,14 +98,36 @@ export default function JobLog({ projectId, jobId, status, fetchLog }: JobLogPro
     URL.revokeObjectURL(url);
   };
 
+  const handleCopy = async () => {
+    const ok = await copyText(toPlainLog(log));
+    setCopyState(ok ? 'copied' : 'failed');
+    setTimeout(() => setCopyState('idle'), 2000);
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-4 py-2 border-b bg-[#0d1117] border-gray-800">
         <span className="text-xs text-gray-400">Job #{jobId} output</span>
-        <Button variant="ghost" size="sm" onClick={handleDownload} className="text-gray-400 hover:text-white h-7">
-          <Download className="h-3.5 w-3.5 mr-1" />
-          Download
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCopy}
+            disabled={!log}
+            className="text-gray-400 hover:text-white h-7"
+          >
+            {copyState === 'copied' ? (
+              <Check className="h-3.5 w-3.5 mr-1 text-green-400" />
+            ) : (
+              <Copy className="h-3.5 w-3.5 mr-1" />
+            )}
+            {copyState === 'copied' ? 'Copied' : copyState === 'failed' ? 'Copy failed' : 'Copy'}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleDownload} className="text-gray-400 hover:text-white h-7">
+            <Download className="h-3.5 w-3.5 mr-1" />
+            Download
+          </Button>
+        </div>
       </div>
 
       <div

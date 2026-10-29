@@ -1,5 +1,5 @@
-import type { GitLabApiClient } from './client';
-import type { GitLabPipeline, GitLabJob } from '../types/gitlab';
+import type { GitLabApiClient, PagedResult } from './client';
+import type { GitLabPipeline, GitLabJob, GitLabBridge } from '../types/gitlab';
 
 export interface ListPipelinesParams {
   status?: string;
@@ -13,7 +13,21 @@ export interface ListPipelinesParams {
   source?: string;
 }
 
+// Pipelines rarely exceed a few hundred jobs; cap the page walk to stay bounded.
+const MAX_PAGES = 10;
+
 export function createPipelinesApi(client: GitLabApiClient) {
+  async function fetchAll<T>(path: string): Promise<T[]> {
+    const items: T[] = [];
+    let page: number | null = 1;
+    for (let i = 0; page && i < MAX_PAGES; i++) {
+      const result: PagedResult<T> = await client.requestPaged<T>(path, { params: { per_page: 100, page } });
+      items.push(...result.items);
+      page = result.pagination.nextPage;
+    }
+    return items;
+  }
+
   return {
     list: (projectId: number, params?: ListPipelinesParams) =>
       client.requestPaged<GitLabPipeline>(`/projects/${projectId}/pipelines`, { params: params as Record<string, string | number | boolean | undefined | null> }),
@@ -26,6 +40,18 @@ export function createPipelinesApi(client: GitLabApiClient) {
       pipelineId: number,
       params?: { scope?: string; per_page?: number; page?: number }
     ) => client.requestPaged<GitLabJob>(`/projects/${projectId}/pipelines/${pipelineId}/jobs`, { params }),
+
+    /** Every (non-retried) job of a pipeline, across all pages. */
+    getAllJobs: (projectId: number, pipelineId: number) =>
+      fetchAll<GitLabJob>(`/projects/${projectId}/pipelines/${pipelineId}/jobs`),
+
+    /** Trigger jobs of a pipeline, each carrying its downstream pipeline. */
+    getAllBridges: (projectId: number, pipelineId: number) =>
+      fetchAll<GitLabBridge>(`/projects/${projectId}/pipelines/${pipelineId}/bridges`),
+
+    /** Project-wide job list (CI/CD → Jobs). */
+    listProjectJobs: (projectId: number, params?: { scope?: string; page?: number; per_page?: number }) =>
+      client.requestPaged<GitLabJob>(`/projects/${projectId}/jobs`, { params }),
 
     retry: (projectId: number, pipelineId: number) =>
       client.request<GitLabPipeline>(`/projects/${projectId}/pipelines/${pipelineId}/retry`, {

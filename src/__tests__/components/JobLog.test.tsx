@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import JobLog from '../../components/pipelines/JobLog';
+import { toPlainLog } from '../../utils/jobLog';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -99,5 +100,25 @@ describe('JobLog — ANSI rendering', () => {
     renderJobLog('Step 1 of 3: installing dependencies');
     await waitFor(() => expect(screen.queryByText(/loading/i)).not.toBeInTheDocument());
     expect(screen.getByText(/Step 1 of 3/)).toBeInTheDocument();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Copy to clipboard
+// ─────────────────────────────────────────────────────────────────────────────
+describe('JobLog — copy', () => {
+  it('strips ANSI codes and GitLab section markers from copied text', () => {
+    const raw = 'section_start:1700000000:step_script[collapsed=true]\r\x1b[0K\x1b[32;1m$ npm test\x1b[0;m\nok\nsection_end:1700000001:step_script\r\x1b[0K';
+    expect(toPlainLog(raw)).toBe('$ npm test\nok\n');
+  });
+
+  it('copies the plain log to the clipboard and confirms', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    renderJobLog('\x1b[31mERROR\x1b[0m: build failed');
+    await waitFor(() => expect(screen.queryByText(/loading/i)).not.toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /copy/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /copied/i })).toBeInTheDocument());
+    expect(writeText).toHaveBeenCalledWith('ERROR: build failed');
   });
 });
