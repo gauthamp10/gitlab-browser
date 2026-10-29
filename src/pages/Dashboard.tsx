@@ -173,7 +173,7 @@ export default function Dashboard() {
   const { data: starredProjects, isLoading: loadingStarred } = useQuery({
     queryKey: ['projects', 'starred'],
     queryFn: () => api.projects.list({ starred: true, per_page: 6 }),
-    enabled: !!user,   // requires authentication; skip in guest mode
+    enabled: !!user,
   });
 
   const { data: events } = useQuery({

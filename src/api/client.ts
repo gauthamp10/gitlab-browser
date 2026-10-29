@@ -60,8 +60,6 @@ export function createApiClient(config: ApiConfig) {
   const base = `${config.host.replace(/\/$/, '')}/api/v4`;
 
   // Only attach the PRIVATE-TOKEN header when a token is configured.
-  // Omitting it allows the client to reach public GitLab API endpoints
-  // without any authentication (guest mode).
   function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
     return config.token
       ? { 'PRIVATE-TOKEN': config.token, ...extra }

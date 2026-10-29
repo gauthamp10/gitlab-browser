@@ -1,6 +1,6 @@
 # GitLab Browser
 
-A modern, self-hostable GitLab frontend that works with **public repositories out of the box** and optionally authenticates with a Personal Access Token — no OAuth, no user licenses required. Browse public projects without any account, or sign in with a PAT to access private repos and write actions.
+A modern, self-hostable GitLab frontend that authenticates with a Personal Access Token — no OAuth, no user licenses required. It only lists the groups and projects the token's user is a member of; public projects outside those memberships are not shown.
 
 [![CI](https://github.com/gauthamp10/glabrowser/actions/workflows/ci.yml/badge.svg)](https://github.com/gauthamp10/glabrowser/actions/workflows/ci.yml)
 [![Security](https://github.com/gauthamp10/glabrowser/actions/workflows/security.yml/badge.svg)](https://github.com/gauthamp10/glabrowser/actions/workflows/security.yml)
@@ -79,7 +79,7 @@ cd glabrowser
 docker compose up --build
 ```
 
-Open **http://localhost:3000**. You can browse public repositories immediately — no account needed. Optionally enter a Personal Access Token to access private repos and write actions.
+Open **http://localhost:3000** and sign in with a Personal Access Token.
 
 ### Docker (manual)
 
@@ -110,8 +110,6 @@ cd glabrowser
 npm install
 npm run dev        # starts at http://localhost:5173
 ```
-
-Public repositories on gitlab.com are accessible immediately without any token.
 
 ```bash
 npm run build      # production build → dist/
@@ -147,7 +145,7 @@ Wrap the Docker container behind a reverse proxy (Nginx, Traefik, Caddy) that te
 
 ## Personal Access Token Scopes
 
-A token is **optional** — public repositories on any GitLab instance are accessible without one. A PAT is required only for private repositories, write operations, and CI/CD features.
+A token is **required**. The browser only lists groups and projects the token's user is a member of (directly or through a group).
 
 Create a token at `https://YOUR_GITLAB/-/user_settings/personal_access_tokens`
 

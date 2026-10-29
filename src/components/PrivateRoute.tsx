@@ -3,9 +3,8 @@ import { useAuthStore } from '../store/auth';
 
 export default function PrivateRoute() {
   const { token } = useAuthStore();
-  // token === null  → user has never set up the app → redirect to login
-  // token === ''    → guest mode (no PAT, public repos only) → allow through
-  // token === 'glpat-...' → authenticated → allow through
-  if (token === null) return <Navigate to="/login" replace />;
+  // A PAT is always required. An empty token (left over from the removed
+  // guest mode) is treated the same as no token.
+  if (!token) return <Navigate to="/login" replace />;
   return <Outlet />;
 }

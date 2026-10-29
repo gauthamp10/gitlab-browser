@@ -17,8 +17,6 @@ interface AuthState {
   instances: GitLabInstance[];
 
   setAuth: (token: string, host: string) => void;
-  /** Enter guest (unauthenticated) mode for the given host. */
-  browseAsGuest: (host: string) => void;
   setUser: (user: GitLabUser) => void;
   logout: () => void;
   addInstance: (instance: GitLabInstance) => void;
@@ -35,10 +33,6 @@ export const useAuthStore = create<AuthState>()(
       instances: [],
 
       setAuth: (token, host) => set({ token, host }),
-
-      // token is set to '' (not null) so PrivateRoute knows the user has made
-      // an explicit choice to browse without a PAT.
-      browseAsGuest: (host) => set({ token: '', host, user: null }),
 
       setUser: (user) => {
         const { host, token, instances } = get();

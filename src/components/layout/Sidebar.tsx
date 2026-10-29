@@ -30,7 +30,7 @@ export default function Sidebar() {
   const handleLogout = () => {
     logout();
     // Clear the entire query cache so no previous user's data leaks into
-    // the next session (guest or a different authenticated account).
+    // the next session (a different authenticated account).
     queryClient.clear();
     navigate('/login');
   };

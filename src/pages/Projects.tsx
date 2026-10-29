@@ -108,11 +108,10 @@ export default function Projects() {
   const { page, perPage, setPage } = usePagination(20);
   const [orderBy, setOrderBy] = useState<string>('last_activity_at');
   const [visibility, setVisibility] = useState<string>('all');
-  const [membership, setMembership] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['projects', 'list', debouncedQuery, page, perPage, orderBy, visibility, membership],
+    queryKey: ['projects', 'list', debouncedQuery, page, perPage, orderBy, visibility],
     queryFn: () =>
       api.projects.list({
         search: debouncedQuery || undefined,
@@ -120,7 +119,6 @@ export default function Projects() {
         sort: 'desc',
         page,
         per_page: perPage,
-        membership: membership || undefined,
         visibility: visibility !== 'all' ? (visibility as never) : undefined,
         statistics: false,
       }),
@@ -174,14 +172,6 @@ export default function Projects() {
             <SelectItem value="private">Private</SelectItem>
           </SelectContent>
         </Select>
-
-        <Button
-          variant={membership ? 'secondary' : 'outline'}
-          size="sm"
-          onClick={() => { setMembership(!membership); setPage(1); }}
-        >
-          Member projects
-        </Button>
       </div>
 
       {/* Results */}
